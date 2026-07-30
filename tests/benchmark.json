@@ -1,0 +1,223 @@
+{
+  "description": "SigX benchmark: labeled conversations for extractor evaluation.",
+  "version": "1.0",
+  "conversations": [
+    {
+      "conversation_id": "bench-001",
+      "conversation": [
+        {"role": "user", "content": "What is Python?"},
+        {"role": "assistant", "content": "Python is a type of snake found in tropical regions."},
+        {"role": "user", "content": "That's not what I asked. I meant the programming language."}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "correction"}
+      ]
+    },
+    {
+      "conversation_id": "bench-002",
+      "conversation": [
+        {"role": "user", "content": "How do I sort a list in Python?"},
+        {"role": "assistant", "content": "You can use the sorted() function or the .sort() method. sorted() returns a new list while .sort() modifies in place."},
+        {"role": "user", "content": "Thanks! That exactly answers my question."}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "positive"}
+      ]
+    },
+    {
+      "conversation_id": "bench-003",
+      "conversation": [
+        {"role": "user", "content": "Explain neural networks to me."},
+        {"role": "assistant", "content": "Neural networks are computational models inspired by the human brain, consisting of layers of interconnected nodes."},
+        {"role": "user", "content": "That's wrong. You are wrong about how they work."}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "negative"}
+      ]
+    },
+    {
+      "conversation_id": "bench-004",
+      "conversation": [
+        {"role": "user", "content": "Tell me about machine learning."},
+        {"role": "assistant", "content": "Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience."},
+        {"role": "user", "content": "Can you tell me more about machine learning algorithms and their applications?"}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "rephrase"}
+      ]
+    },
+    {
+      "conversation_id": "bench-005",
+      "conversation": [
+        {"role": "user", "content": "Help me fix this bug in my code."},
+        {"role": "assistant", "content": "I'd be happy to help! Can you share your code and describe the issue?"},
+        {"role": "user", "content": "Never mind, I'll figure it out myself."}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "abandon"}
+      ]
+    },
+    {
+      "conversation_id": "bench-006",
+      "conversation": [
+        {"role": "user", "content": "What's the capital of France?"},
+        {"role": "assistant", "content": "The capital of France is Paris."},
+        {"role": "user", "content": "What about Germany?"}
+      ],
+      "ground_truth": []
+    },
+    {
+      "conversation_id": "bench-007",
+      "conversation": [
+        {"role": "user", "content": "Write a function to calculate factorial."},
+        {"role": "assistant", "content": "Here's a Python function: def factorial(n): return 1 if n <= 1 else n * factorial(n-1)"},
+        {"role": "user", "content": "That's completely wrong, it doesn't handle negative numbers."}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "negative"}
+      ]
+    },
+    {
+      "conversation_id": "bench-008",
+      "conversation": [
+        {"role": "user", "content": "What is Docker?"},
+        {"role": "assistant", "content": "Docker is a containerization platform that allows you to package applications with their dependencies."},
+        {"role": "user", "content": "Actually I meant Docker Compose specifically."}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "correction"}
+      ]
+    },
+    {
+      "conversation_id": "bench-009",
+      "conversation": [
+        {"role": "user", "content": "How do I reverse a string in Python?"},
+        {"role": "assistant", "content": "You can reverse a string using slicing: string[::-1]"},
+        {"role": "user", "content": "Perfect, this is exactly what I needed!"}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "positive"}
+      ]
+    },
+    {
+      "conversation_id": "bench-010",
+      "conversation": [
+        {"role": "user", "content": "Teach me about REST APIs."},
+        {"role": "assistant", "content": "REST stands for Representational State Transfer. It's an architectural style for designing networked applications."},
+        {"role": "user", "content": "REST APIs, please explain REST APIs properly."}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "rephrase"}
+      ]
+    },
+    {
+      "conversation_id": "bench-011",
+      "conversation": [
+        {"role": "user", "content": "What is Kubernetes?"},
+        {"role": "assistant", "content": "Kubernetes is an open-source container orchestration platform that automates deployment, scaling, and management of containerized applications."},
+        {"role": "user", "content": "I don't think that's right. I think you misunderstood my question."}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "negative"}
+      ]
+    },
+    {
+      "conversation_id": "bench-012",
+      "conversation": [
+        {"role": "user", "content": "Write a hello world in Python."},
+        {"role": "assistant", "content": "print('Hello, World!')"},
+        {"role": "user", "content": "Well done! Good job explaining it too."}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "positive"}
+      ]
+    },
+    {
+      "conversation_id": "bench-013",
+      "conversation": [
+        {"role": "user", "content": "No thanks, that's not helpful."},
+        {"role": "assistant", "content": "I'm sorry to hear that. How can I improve?"},
+        {"role": "user", "content": "I said no thanks, just forget it."}
+      ],
+      "ground_truth": [
+        {"turn_index": 0, "signal_type": "negative"},
+        {"turn_index": 2, "signal_type": "abandon"}
+      ]
+    },
+    {
+      "conversation_id": "bench-014",
+      "conversation": [
+        {"role": "user", "content": "How does garbage collection work in Java?"},
+        {"role": "assistant", "content": "Java's garbage collector automatically manages memory by identifying and disposing of objects no longer referenced by the program."},
+        {"role": "user", "content": "I really appreciate the clear explanation, very helpful!"}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "positive"}
+      ]
+    },
+    {
+      "conversation_id": "bench-015",
+      "conversation": [
+        {"role": "user", "content": "Explain big O notation."},
+        {"role": "assistant", "content": "Big O notation describes the performance of algorithms."},
+        {"role": "user", "content": "Explain big O notation with examples."}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "rephrase"}
+      ]
+    },
+    {
+      "conversation_id": "bench-016",
+      "conversation": [
+        {"role": "user", "content": "How do I parse JSON in Python?"},
+        {"role": "assistant", "content": "Use the json module: import json; data = json.loads(json_string)"},
+        {"role": "user", "content": "Can you also show me how to write JSON?"}
+      ],
+      "ground_truth": []
+    },
+    {
+      "conversation_id": "bench-017",
+      "conversation": [
+        {"role": "user", "content": "What's the difference between list and tuple?"},
+        {"role": "assistant", "content": "Lists are mutable, tuples are immutable."},
+        {"role": "user", "content": "No, that's incorrect. I meant to ask about arrays vs lists."}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "correction"}
+      ]
+    },
+    {
+      "conversation_id": "bench-018",
+      "conversation": [
+        {"role": "user", "content": "Help me understand recursion."},
+        {"role": "assistant", "content": "Recursion is a programming technique where a function calls itself to solve smaller instances of the same problem."},
+        {"role": "user", "content": "This is going nowhere. I give up."}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "abandon"}
+      ]
+    },
+    {
+      "conversation_id": "bench-019",
+      "conversation": [
+        {"role": "user", "content": "How do I create a virtual environment?"},
+        {"role": "assistant", "content": "Run: python -m venv myenv"},
+        {"role": "user", "content": "Great, that works perfectly!"}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "positive"}
+      ]
+    },
+    {
+      "conversation_id": "bench-020",
+      "conversation": [
+        {"role": "user", "content": "What's the best way to learn programming?"},
+        {"role": "assistant", "content": "Start with Python, practice daily, build projects, and read documentation."},
+        {"role": "user", "content": "That's not useful at all. Try again with specific resources."}
+      ],
+      "ground_truth": [
+        {"turn_index": 2, "signal_type": "negative"}
+      ]
+    }
+  ]
+}

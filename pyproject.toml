@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sigx"
+version = "0.1.0"
+description = "Implicit Feedback Signal Extraction for LLM Alignment"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [
+    {name = "fengrru"}
+]
+keywords = ["llm", "alignment", "dpo", "kto", "rlhf", "preference-learning"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=1.21.0",
+    "scikit-learn>=1.0.0",
+]
+
+[project.optional-dependencies]
+wildchat = ["datasets>=2.0.0"]
+llm = ["openai>=1.0.0"]
+dev = ["pytest>=7.0.0", "ruff>=0.1.0"]
+
+[project.urls]
+Homepage = "https://github.com/fengrru/sigx"
+Repository = "https://github.com/fengrru/sigx"
+Issues = "https://github.com/fengrru/sigx/issues"
+
+[tool.setuptools.packages.find]
+include = ["sigx", "sigx.*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B"]
+ignore = ["UP045", "UP006"]  # py38 compat: X|None syntax requires 3.10+
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["E501"]  # test data verbosity
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
