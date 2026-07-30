@@ -33,23 +33,6 @@ def _find_chosen_from_signals(
     negative_turns: Set[Tuple[str, int]],
     strategy: str,
 ) -> Optional[str]:
-    """
-    Find a chosen (good) response for a negative signal by looking
-    forward in the conversation for positive resolution.
-
-    Strategy 'subsequent':
-      1. Find the first positive user turn after this signal's turn.
-      2. The assistant response immediately before that positive turn
-         is the chosen response (the "corrected" answer).
-      3. If no positive turn found, use the last assistant response
-         (assuming the conversation eventually resolved).
-
-    Strategy 'last_assistant':
-      Use the final assistant response in the conversation.
-
-    Strategy 'none':
-      Return None (chosen unknown).
-    """
     if strategy == CHOSEN_NONE:
         return None
 
@@ -60,53 +43,35 @@ def _find_chosen_from_signals(
     conv_id = signal.conversation_id
     signal_turn = signal.turn_index
 
-    # --- Strategy: subsequent ---
     if strategy == CHOSEN_SUBSEQUENT:
-        # Step 1: scan forward for a positive user turn
         for i in range(signal_turn + 1, len(turns)):
             role = turns[i].get("role", "")
             if role in ("user", "human"):
                 key = (conv_id, i)
                 if key in positive_turns:
-                    # Found positive — get the assistant just before it
                     for j in range(i - 1, signal_turn, -1):
                         if turns[j].get("role") in ("assistant", "gpt", "model"):
-                            chosen = turns[j].get("content", "").strip()
+                            chosen = str(turns[j].get("content", "") or "").strip()
                             if chosen:
-                                logger.debug(
-                                    "Found chosen via subsequent positive"
-                                    " at turn %d for signal at turn %d",
-                                    i,
-                                    signal_turn,
-                                )
                                 return chosen
 
-        # Step 2: no positive — fall back to last assistant if no further complaints
-        last_good = None
+        last_good: Optional[str] = None
         for i in range(len(turns) - 1, signal_turn, -1):
             role = turns[i].get("role", "")
             if role in ("user", "human"):
                 key = (conv_id, i)
                 if key in negative_turns:
-                    # User complained again — invalidate anything after this point
                     last_good = None
                     break
             elif role in ("assistant", "gpt", "model"):
                 if last_good is None:
-                    last_good = turns[i].get("content", "").strip()
-
-        if last_good:
-            logger.debug(
-                "Found chosen via last_assistant fallback for signal at turn %d",
-                signal_turn,
-            )
+                    last_good = str(turns[i].get("content", "") or "").strip()
         return last_good
 
-    # --- Strategy: last_assistant ---
     if strategy == CHOSEN_LAST_ASSISTANT:
         for i in range(len(turns) - 1, signal_turn, -1):
             if turns[i].get("role") in ("assistant", "gpt", "model"):
-                return turns[i].get("content", "").strip()
+                return str(turns[i].get("content", "") or "").strip()
         return None
 
     return None
@@ -128,10 +93,9 @@ def _build_prompt(turns: List[Dict], up_to: int) -> str:
 
 
 def _get_assistant_response(turns: List[Dict], before_turn: int) -> Optional[str]:
-    """Get the assistant response immediately before the given user turn."""
     for i in range(before_turn - 1, -1, -1):
         if turns[i].get("role") in ("assistant", "gpt", "model"):
-            return turns[i].get("content", "").strip()
+            return str(turns[i].get("content", "") or "").strip()
     return None
 
 

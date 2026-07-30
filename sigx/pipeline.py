@@ -8,7 +8,7 @@ filters, and converters to process conversation data end-to-end.
 from __future__ import annotations
 
 import logging
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from .converters.preference import (
     CHOSEN_SUBSEQUENT,
@@ -104,16 +104,11 @@ class Pipeline:
     ) -> List[PreferencePair] | tuple[List[PreferencePair], Dict]:
         """
         End-to-end: extract signals, filter, convert to DPO pairs.
-
-        Args:
-            conversations: Iterable of conversation dicts.
-            return_report: If True, also return stats.
-
-        Returns:
-            DPO preference pairs.
         """
         convos = list(conversations)
-        signals, report = self.run(convos, return_report=True)
+        result = self.run(convos, return_report=True)
+        assert isinstance(result, tuple)
+        signals, report = result
 
         conv_map = {
             c.get("conversation_id", str(i)): c.get("conversation", [])
@@ -135,7 +130,9 @@ class Pipeline:
         End-to-end: extract signals, filter, convert to KTO examples.
         """
         convos = list(conversations)
-        signals, report = self.run(convos, return_report=True)
+        result = self.run(convos, return_report=True)
+        assert isinstance(result, tuple)
+        signals, report = result
 
         conv_map = {
             c.get("conversation_id", str(i)): c.get("conversation", [])
@@ -174,7 +171,7 @@ class Pipeline:
 
     def evaluate(
         self,
-        benchmark: List[Dict],
+        benchmark: List[Dict] | str,
     ) -> Dict:
         """
         Evaluate extraction quality against a labeled benchmark.
@@ -185,22 +182,10 @@ class Pipeline:
             - "ground_truth" (list of {"turn_index": int, "signal_type": str})
 
         Returns a dict with per-type and overall precision, recall, F1.
-
-        Example:
-            >>> benchmark = [
-            ...     {
-            ...         "conversation_id": "1",
-            ...         "conversation": [...],
-            ...         "ground_truth": [{"turn_index": 2, "signal_type": "negative"}],
-            ...     }
-            ... ]
-            >>> metrics = pipeline.evaluate(benchmark)
-            >>> print(metrics["overall"]["f1"])
         """
         import json
         from pathlib import Path
 
-        # Support passing a file path string
         if isinstance(benchmark, str):
             path = Path(benchmark)
             if not path.exists():
@@ -235,7 +220,9 @@ class Pipeline:
             )
 
         # 2. Run pipeline to get predictions
-        pred_signals = self.run(gt_convos)
+        raw_pred = self.run(gt_convos)
+        assert isinstance(raw_pred, list)
+        pred_signals: List[Signal] = raw_pred
 
         pred_map: Dict[str, Dict[int, str]] = {}
         for sig in pred_signals:
@@ -280,7 +267,7 @@ class Pipeline:
                         fp[pd_type] += 1
 
         # 4. Calculate metrics per type
-        def _f1(p, r):
+        def _f1(p: float, r: float) -> float:
             if p + r == 0:
                 return 0.0
             return 2 * p * r / (p + r)
@@ -312,7 +299,7 @@ class Pipeline:
         overall_p = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0.0
         overall_r = total_tp / overall_support if overall_support > 0 else 0.0
 
-        result = {
+        metrics: Dict[str, Any] = {
             "overall": {
                 "precision": round(overall_p, 4),
                 "recall": round(overall_r, 4),
@@ -324,10 +311,10 @@ class Pipeline:
 
         logger.info(
             "Evaluation: overall F1=%.4f (P=%.4f R=%.4f) on %d items",
-            result["overall"]["f1"],
-            result["overall"]["precision"],
-            result["overall"]["recall"],
+            metrics["overall"]["f1"],
+            metrics["overall"]["precision"],
+            metrics["overall"]["recall"],
             len(items),
         )
 
-        return result
+        return metrics

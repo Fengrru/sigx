@@ -14,7 +14,7 @@ Pattern categories:
 
 import logging
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -190,7 +190,7 @@ class SentimentDetector(BaseExtractor):
         self,
         texts: List[str],
         labels: List[str],
-        **kwargs,
+        **kwargs: Any,
     ) -> "SentimentDetector":
         """
         Train the ML classifier on labeled user messages.

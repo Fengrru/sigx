@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from ..types import Signal
 from .base import BaseExtractor
@@ -104,28 +104,27 @@ class LLMExtractor(BaseExtractor):
         self.max_context_turns = max_context_turns
         self.extra_headers = extra_headers
 
-        self._client = None
+        self._client: Any = None
         self._checked_import = False
 
     # ------------------------------------------------------------------
     # Lazy client
     # ------------------------------------------------------------------
 
-    def _get_client(self):
-        """Lazily create (and cache) the OpenAI client."""
+    def _get_client(self) -> Any:
         if self._client is not None:
             return self._client
 
         if not self._checked_import:
             try:
-                from openai import OpenAI  # type: ignore[import-untyped]
+                from openai import OpenAI
             except ImportError as err:
                 raise ImportError(
                     "LLMExtractor requires the 'openai' package. Install with: pip install openai"
                 ) from err
             self._checked_import = True
 
-        from openai import OpenAI  # type: ignore[import-untyped]
+        from openai import OpenAI
 
         kwargs: Dict = {"api_key": self.api_key}
         if self.base_url is not None:
