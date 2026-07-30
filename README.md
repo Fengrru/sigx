@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.8+">
-<img src="https://img.shields.io/badge/License-MIT-00FF00?style=for-the-badge" alt="License: MIT">
-<img src="https://img.shields.io/badge/tests-70%20passed-brightgreen?style=for-the-badge" alt="Tests">
-<img src="https://img.shields.io/badge/benchmark-F1%200.83-success?style=for-the-badge" alt="Benchmark F1">
-<img src="https://img.shields.io/pypi/v/sigx?style=for-the-badge&label=PyPI" alt="PyPI version">
+![Python](https://img.shields.io/badge/python-3.8+-blue?style=flat&logo=python&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green?style=flat)
+![Tests](https://img.shields.io/badge/tests-70%20passed-brightgreen?style=flat)
+![F1](https://img.shields.io/badge/benchmark-F1%200.83-orange?style=flat)
+![PyPI](https://img.shields.io/pypi/v/sigx?style=flat&color=blue)
 
 # SigX
 
