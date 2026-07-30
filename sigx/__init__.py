@@ -24,6 +24,17 @@ from .converters import (
     to_kto,
     to_rejection,
 )
+from .exceptions import (
+    BenchmarkError,
+    ConfigurationError,
+    ConversationFormatError,
+    DataLoadingError,
+    ExtractionError,
+    LLMConnectionError,
+    LLMResponseError,
+    QualityGateError,
+    SigXError,
+)
 from .extractors import (
     AbandonDetector,
     BaseExtractor,
@@ -69,4 +80,13 @@ __all__ = [
     "load_conversations",
     "load_wildchat",
     "stream_wildchat",
+    "SigXError",
+    "ExtractionError",
+    "ConversationFormatError",
+    "ConfigurationError",
+    "LLMConnectionError",
+    "LLMResponseError",
+    "DataLoadingError",
+    "BenchmarkError",
+    "QualityGateError",
 ]

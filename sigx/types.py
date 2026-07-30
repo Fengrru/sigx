@@ -87,6 +87,26 @@ class KTOExample:
 class SignalReport:
     """
     Summary report of extracted signals from a batch of conversations.
+
+    This class provides a comprehensive summary of signal extraction results,
+    including statistics about conversation counts, signal types, confidence
+    scores, and extraction density.
+
+    Attributes:
+        total_conversations: Total number of conversations processed.
+        total_turns: Total number of turns across all conversations.
+        total_signals: Total number of signals extracted.
+        by_type: Dictionary mapping signal types to their counts.
+        mean_confidence: Mean confidence score across all signals.
+        min_confidence: Minimum confidence score observed.
+        max_confidence: Maximum confidence score observed.
+        conversations_with_signals: Number of conversations that produced at least one signal.
+        signals_per_conversation: Average number of signals per conversation.
+
+    Example:
+        >>> report = generate_report(signals, n_conversations=100, n_turns=500)
+        >>> print(report.summary())
+        >>> print(f"Extraction density: {report.signals_per_conversation:.2f} signals/conv")
     """
 
     total_conversations: int
@@ -100,6 +120,12 @@ class SignalReport:
     signals_per_conversation: float
 
     def summary(self) -> str:
+        """
+        Generate a human-readable summary report.
+
+        Returns:
+            A formatted string containing the extraction statistics.
+        """
         lines = [
             "=" * 50,
             "  SigX Signal Extraction Report",
@@ -117,7 +143,27 @@ class SignalReport:
 
 
 def generate_report(signals: List[Signal], n_conversations: int, n_turns: int) -> SignalReport:
-    """Generate a summary report from a list of signals."""
+    """
+    Generate a summary report from a list of signals.
+
+    This function analyzes a list of extracted signals and computes
+    comprehensive statistics including signal counts, confidence metrics,
+    and extraction density.
+
+    Args:
+        signals: List of Signal objects to analyze.
+        n_conversations: Total number of conversations processed.
+        n_turns: Total number of turns across all conversations.
+
+    Returns:
+        A SignalReport object containing the analysis results.
+
+    Example:
+        >>> signals = pipeline.run(conversations)
+        >>> report = generate_report(signals, n_conversations=100, n_turns=500)
+        >>> print(f"Extracted {report.total_signals} signals")
+        >>> print(f"Mean confidence: {report.mean_confidence:.3f}")
+    """
     if not signals:
         return SignalReport(
             total_conversations=n_conversations,
@@ -152,14 +198,42 @@ def generate_report(signals: List[Signal], n_conversations: int, n_turns: int) -
 
 
 def save_signals_jsonl(signals: List[Signal], path: str) -> None:
-    """Save signals to a JSONL file."""
+    """
+    Save signals to a JSONL file.
+
+    Each signal is serialized as a JSON object and written on a separate line.
+    The output format is compatible with standard JSONL readers and can be
+    used for debugging, analysis, or further processing.
+
+    Args:
+        signals: List of Signal objects to save.
+        path: Output file path.
+
+    Example:
+        >>> signals = pipeline.run(conversations)
+        >>> save_signals_jsonl(signals, "extracted_signals.jsonl")
+    """
     with open(path, "w", encoding="utf-8") as f:
         for sig in signals:
             f.write(json.dumps(asdict(sig), ensure_ascii=False) + "\n")
 
 
 def save_pairs_jsonl(pairs: List[PreferencePair], path: str) -> None:
-    """Save preference pairs to JSONL (compatible with TRL)."""
+    """
+    Save preference pairs to JSONL (compatible with TRL).
+
+    Each preference pair is serialized as a JSON object and written on a
+    separate line. The output format is directly compatible with TRL's
+    DPOTrainer and other RLHF frameworks.
+
+    Args:
+        pairs: List of PreferencePair objects to save.
+        path: Output file path.
+
+    Example:
+        >>> pairs = pipeline.to_dpo(conversations)
+        >>> save_pairs_jsonl(pairs, "training_pairs.jsonl")
+    """
     with open(path, "w", encoding="utf-8") as f:
         for pair in pairs:
             f.write(json.dumps(pair.to_dict(), ensure_ascii=False) + "\n")

@@ -15,6 +15,7 @@ from .converters.preference import (
     to_dpo,
     to_kto,
 )
+from .exceptions import BenchmarkError, ConfigurationError
 from .extractors.base import BaseExtractor
 from .filters.quality import QualityGate
 from .types import KTOExample, PreferencePair, Signal, generate_report
@@ -203,14 +204,17 @@ class Pipeline:
         if isinstance(benchmark, str):
             path = Path(benchmark)
             if not path.exists():
-                raise FileNotFoundError(f"Benchmark file not found: {benchmark}")
-            with open(path, encoding="utf-8") as f:
-                data = json.load(f)
+                raise BenchmarkError(f"Benchmark file not found: {benchmark}")
+            try:
+                with open(path, encoding="utf-8") as f:
+                    data = json.load(f)
+            except json.JSONDecodeError as err:
+                raise BenchmarkError(f"Invalid JSON in benchmark file: {benchmark}") from err
             items = data.get("conversations", data)
         elif isinstance(benchmark, list):
             items = benchmark
         else:
-            raise TypeError("benchmark must be a list or file path string")
+            raise ConfigurationError("benchmark must be a list or file path string")
 
         if not items:
             return {"overall": {"precision": 0.0, "recall": 0.0, "f1": 0.0, "support": 0}}

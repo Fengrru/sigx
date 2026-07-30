@@ -35,7 +35,7 @@ dependencies = [
 [project.optional-dependencies]
 wildchat = ["datasets>=2.0.0"]
 llm = ["openai>=1.0.0"]
-dev = ["pytest>=7.0.0", "ruff>=0.1.0"]
+dev = ["pytest>=7.0.0", "pytest-cov>=4.0.0", "ruff>=0.1.0", "mypy>=1.0.0", "pyright>=1.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/fengrru/sigx"
@@ -58,3 +58,48 @@ ignore = ["UP045", "UP006"]  # py38 compat: X|None syntax requires 3.10+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["sigx"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 70
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.",
+    "raise NotImplementedError",
+    "pass",
+    "except Exception",
+]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pyright]
+pythonVersion = "3.8"
+typeCheckingMode = "strict"
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportGeneralTypeIssues = true
+reportPrivateUsage = true
+reportUnknownMemberType = true
+reportUnknownParameterType = true
+reportUnknownVariableType = true
+reportUnknownArgumentType = true
+reportUnknownLambdaType = true
+reportUnknownBaseClass = true
+reportUnknownDecorator = true

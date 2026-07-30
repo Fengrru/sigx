@@ -9,6 +9,8 @@ Data loaders for common conversation formats:
 import json
 from typing import Dict, Iterable, List, Optional
 
+from ..exceptions import ConfigurationError, DataLoadingError
+
 
 def load_conversations(
     path: str,
@@ -37,7 +39,9 @@ def load_conversations(
     elif format == "jsonl":
         return _load_jsonl(path, n)
     else:
-        raise ValueError(f"Unknown format: {format}")
+        raise ConfigurationError(
+            f"Unknown format: {format}. Supported formats: sharegpt, openai, jsonl"
+        )
 
 
 def load_wildchat(
@@ -96,8 +100,13 @@ def _normalize_wildchat(item: Dict) -> Dict:
 
 
 def _load_sharegpt(path: str, n: Optional[int] = None) -> List[Dict]:
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError as err:
+        raise DataLoadingError(f"File not found: {path}") from err
+    except json.JSONDecodeError as err:
+        raise DataLoadingError(f"Invalid JSON in file: {path}") from err
 
     if n is not None:
         data = data[:n]
@@ -120,8 +129,13 @@ def _load_sharegpt(path: str, n: Optional[int] = None) -> List[Dict]:
 
 
 def _load_openai(path: str, n: Optional[int] = None) -> List[Dict]:
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError as err:
+        raise DataLoadingError(f"File not found: {path}") from err
+    except json.JSONDecodeError as err:
+        raise DataLoadingError(f"Invalid JSON in file: {path}") from err
 
     if n is not None:
         data = data[:n]
@@ -142,29 +156,35 @@ def _load_openai(path: str, n: Optional[int] = None) -> List[Dict]:
 
 def _load_jsonl(path: str, n: Optional[int] = None) -> List[Dict]:
     result = []
-    with open(path, encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            if n is not None and i >= n:
-                break
-            line = line.strip()
-            if not line:
-                continue
-            item = json.loads(line)
-            conv = item.get("conversation") or item.get("conversations")
-            if conv is None:
-                continue
-            result.append({
-                "conversation_id": item.get(
-                    "conversation_id", item.get("conversation_hash", str(i))
-                ),
-                "conversation": [
-                    {
-                        "role": t.get("role", t.get("from", "user")),
-                        "content": t.get("content", t.get("value", "")),
-                    }
-                    for t in conv
-                ],
-            })
+    try:
+        with open(path, encoding="utf-8") as f:
+            for i, line in enumerate(f):
+                if n is not None and i >= n:
+                    break
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    item = json.loads(line)
+                except json.JSONDecodeError as err:
+                    raise DataLoadingError(f"Invalid JSON on line {i + 1} in file: {path}") from err
+                conv = item.get("conversation") or item.get("conversations")
+                if conv is None:
+                    continue
+                result.append({
+                    "conversation_id": item.get(
+                        "conversation_id", item.get("conversation_hash", str(i))
+                    ),
+                    "conversation": [
+                        {
+                            "role": t.get("role", t.get("from", "user")),
+                            "content": t.get("content", t.get("value", "")),
+                        }
+                        for t in conv
+                    ],
+                })
+    except FileNotFoundError as err:
+        raise DataLoadingError(f"File not found: {path}") from err
 
     return result
 
@@ -174,7 +194,7 @@ def stream_wildchat(n: Optional[int] = None) -> Iterable[Dict]:
     try:
         from datasets import load_dataset
     except ImportError as err:
-        raise ImportError(
+        raise DataLoadingError(
             "datasets library required. Install with: pip install datasets"
         ) from err
 

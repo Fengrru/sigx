@@ -1,56 +1,93 @@
-<p align="center">
-  <h1 align="center">SigX</h1>
-  <p align="center"><strong>Implicit Feedback Signal Extraction for LLM Alignment</strong></p>
-</p>
+<div align="center">
 
-<p align="center">
-  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python 3.8+"></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://pypi.org/project/sigx/"><img src="https://img.shields.io/pypi/v/sigx.svg" alt="PyPI version"></a>
-  <img src="https://img.shields.io/badge/tests-62%20passed-brightgreen.svg" alt="Tests">
-  <img src="https://img.shields.io/badge/benchmark-F1%200.83-success.svg" alt="Benchmark F1">
-</p>
+<img src="https://img.shields.io/badge/python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.8+">
+<img src="https://img.shields.io/badge/License-MIT-00FF00?style=for-the-badge" alt="License: MIT">
+<img src="https://img.shields.io/badge/tests-70%20passed-brightgreen?style=for-the-badge" alt="Tests">
+<img src="https://img.shields.io/badge/benchmark-F1%200.83-success?style=for-the-badge" alt="Benchmark F1">
+<img src="https://img.shields.io/pypi/v/sigx?style=for-the-badge&label=PyPI" alt="PyPI version">
+
+# SigX
+
+### Implicit Feedback Signal Extraction for LLM Alignment
+
+**Extract preference signals from conversation logs — no human annotation required.**
+
+[SigX Documentation](docs/index.md) | [Quick Start](#quick-start) | [API Reference](docs/api/pipeline.md) | [Contributing](CONTRIBUTING.md)
+
+</div>
 
 ---
 
-## Overview
+## Why SigX?
 
-**SigX** converts raw conversation logs into structured training data for LLM alignment. It automatically identifies implicit user feedback — rephrases, corrections, dissatisfaction, satisfaction, and abandonment — that users naturally express during conversations, then transforms these signals into DPO and KTO training formats ready for TRL, VeRL, and other RLHF frameworks.
+Traditional LLM alignment relies on **expensive human annotations** or **synthetic preferences from GPT-4**. But every production chat log already contains rich preference signals:
 
-> **Why implicit feedback?** Traditional alignment relies on expensive human annotations or synthetic preferences from GPT-4. In reality, every chat log already contains rich preference signals — users re-ask questions when unsatisfied, say "actually I meant…" when correcting, say "thanks!" when pleased, and abandon conversations when frustrated. SigX mines these signals at zero marginal cost.
+| What Users Do | What It Means | SigX Signal |
+|:---|:---|:---|
+| Re-ask the same question | Previous answer was unhelpful | `rephrase` |
+| Say "Actually I meant..." | Model misunderstood | `correction` |
+| Say "That's wrong" | Explicit dissatisfaction | `negative` |
+| Say "Thanks! Perfect!" | Explicit satisfaction | `positive` |
+| Say "Never mind" and leave | User gave up | `abandon` |
 
-Inspired by [WildFeedback (Microsoft Research, 2024)](https://arxiv.org/abs/2408.15549), [WildReward (Tsinghua KEG, 2026)](https://arxiv.org/abs/2606.20482), and the broader literature on learning from implicit preferences.
+**SigX mines these signals at zero marginal cost** — turning your existing chat logs into DPO/KTO training data.
+
+> Inspired by [WildFeedback](https://arxiv.org/abs/2408.15549) (Microsoft Research, ACL 2026), [WildReward](https://arxiv.org/abs/2602.08829) (Tsinghua KEG, 2026), [IFLLM](https://arxiv.org/abs/2606.20482) (UMass, 2026), and the broader literature on learning from implicit preferences.
+
+---
+
+## Comparison with Related Tools
+
+| Feature | **SigX** | preference-data-pipeline | TRL (HuggingFace) | SFTizer |
+|:---|:---:|:---:|:---:|:---:|
+| **Extract signals from raw logs** | **Yes** | No (needs pre-labeled data) | No | No |
+| **Implicit feedback detection** | **Yes** | No | No | No |
+| **DPO/KTO output format** | **Yes** | Yes | Yes (training only) | No |
+| **Auto-infer chosen responses** | **Yes** | No | No | No |
+| **Pluggable extractors** | **Yes** | No | No | No |
+| **LLM-based classification** | **Yes** | No | No | No |
+| **Built-in evaluation metrics** | **Yes** | No | No | No |
+| **Zero GPU required** | **Yes** | Yes | No | Yes |
+| **Wildcard/ShareGPT/OpenAI loaders** | **Yes** | Partial | Yes | Yes |
 
 ---
 
 ## Highlights
 
-- **🔌 Pluggable Extractors** — Mix and match built-in detectors (regex, TF-IDF, ML, LLM) or write your own via `BaseExtractor`.
-- **📊 Smart DPO Conversion** — `chosen` responses are automatically inferred from subsequent positive turns, producing complete (prompt, chosen, rejected) triples — not just (prompt, None, rejected).
-- **🤖 LLM Classifier** — Optional `LLMExtractor` uses any OpenAI-compatible API (GPT-4o-mini, Qwen, Llama via vLLM/Ollama) for high-accuracy signal classification.
-- **📈 Built-in Evaluation** — `pipeline.evaluate()` computes per-type precision/recall/F1 against labeled benchmarks.
-- **🎯 Multi-Format Output** — DPO pairs, KTO examples, and rejection-sampling lists, all compatible with TRL and VeRL.
-- **⚡ Lightweight Core** — Only `numpy` + `scikit-learn`. No GPU required. Optional extras for LLM and HuggingFace datasets.
+<table>
+<tr>
+<td width="50%">
+
+### Core Capabilities
+
+- **Pluggable Extractors** — Mix regex, TF-IDF, ML, and LLM detectors
+- **Smart DPO Conversion** — Auto-infer `chosen` from subsequent positive turns
+- **Multi-Format Output** — DPO, KTO, rejection sampling for TRL/VeRL
+- **Built-in Evaluation** — Per-type precision/recall/F1 against benchmarks
+
+</td>
+<td width="50%">
+
+### Design Principles
+
+- **Lightweight** — Only `numpy` + `scikit-learn`. No GPU needed.
+- **Extensible** — Subclass `BaseExtractor` for custom detectors
+- **Production-ready** — Type annotations, 70 tests, CI/CD
+- **Framework-agnostic** — Output compatible with TRL, VeRL, and more
+
+</td>
+</tr>
+</table>
 
 ---
 
-## Installation
+## Quick Start
 
 ```bash
 pip install sigx
 ```
 
-With optional dependencies:
-
-```bash
-pip install sigx[wildchat]   # HuggingFace WildChat dataset support
-pip install sigx[llm]        # LLMExtractor (OpenAI API support)
-pip install sigx[dev]        # Development tools (pytest, ruff)
-```
-
----
-
-## Quick Start
+### 1. Extract Signals from Conversations
 
 ```python
 from sigx import Pipeline, RephraseDetector, SentimentDetector
@@ -73,36 +110,71 @@ conversations = [
     }
 ]
 
-# Extract signals
 signals = pipeline.run(conversations)
 for s in signals:
     print(f"[{s.signal_type}] confidence={s.confidence:.2f} | {s.evidence[:60]}...")
+```
 
-# Convert to DPO training pairs (chosen auto-inferred from positive turns)
+**Output:**
+```
+[rephrase] confidence=0.89 | Can you explain topic 0 in more detail?...
+[negative] confidence=0.85 | That's not what I asked. I meant the prog...
+[positive] confidence=0.80 | Thanks! That's exactly what I needed....
+```
+
+### 2. Convert to DPO Training Pairs
+
+```python
 pairs = pipeline.to_dpo(conversations)
 for p in pairs:
-    print(f"Prompt:  {p.prompt[:80]}...")
+    print(f"Prompt:   {p.prompt[:80]}...")
     print(f"Rejected: {p.rejected[:80]}...")
     print(f"Chosen:   {p.chosen[:80] if p.chosen else 'None'}...")
-    print("---")
-
-# Convert to KTO (binary good/bad labels)
-examples = pipeline.to_kto(conversations)
 ```
+
+**Output:**
+```
+Prompt:   User: What is Python?...
+Rejected: Python is a type of snake....
+Chosen:   Python is a high-level programming language created by Guido van...
+```
+
+### 3. Feed to TRL for Training
+
+```python
+from trl import DPOTrainer
+
+trainer = DPOTrainer(
+    model=model,
+    train_dataset=pairs,  # SigX output works directly with TRL
+)
+trainer.train()
+```
+
+---
+
+## Installation
+
+| Install Command | Includes |
+|:---|:---|
+| `pip install sigx` | Core (numpy, scikit-learn) |
+| `pip install sigx[llm]` | + OpenAI API for LLMExtractor |
+| `pip install sigx[wildchat]` | + HuggingFace datasets for WildChat |
+| `pip install sigx[dev]` | + pytest, ruff, mypy, pyright |
 
 ---
 
 ## Signal Types
 
-SigX detects five categories of implicit feedback, each mapped to a specific training signal:
+SigX detects five categories of implicit feedback:
 
-| Signal | Trigger Pattern | Training Implication |
-|--------|----------------|---------------------|
-| `rephrase` | User re-asks the same question (TF-IDF cosine similarity) | Previous response was unsatisfactory → `rejected` |
-| `correction` | "Actually I meant…", "No, that's not what I…" | Model output was wrong → `rejected` |
-| `negative` | "That's wrong", "Not helpful", "You misunderstood" | Explicit dissatisfaction → `rejected` |
-| `positive` | "Thanks!", "Exactly what I needed", "Perfect" | Explicit satisfaction → `chosen` / `label=True` |
-| `abandon` | "Never mind", "I give up", conversation terminates on assistant | User gave up → `rejected` |
+| Signal | Trigger Pattern | Confidence Range | Training Implication |
+|:---|:---|:---:|:---|
+| `rephrase` | User re-asks similar question (TF-IDF cosine sim) | 0.40 – 1.00 | Previous response → `rejected` |
+| `correction` | "Actually I meant...", "No, that's not..." | 0.60 – 0.95 | Model output → `rejected` |
+| `negative` | "That's wrong", "Not helpful" | 0.65 – 0.95 | Explicit dissatisfaction → `rejected` |
+| `positive` | "Thanks!", "Exactly what I needed" | 0.60 – 0.90 | Explicit satisfaction → `chosen` / `label=True` |
+| `abandon` | "Never mind", "I give up", trailing assistant | 0.35 – 0.90 | User gave up → `rejected` |
 
 ---
 
@@ -110,7 +182,7 @@ SigX detects five categories of implicit feedback, each mapped to a specific tra
 
 ### RephraseDetector
 
-Compares consecutive user turns using TF-IDF cosine similarity. High similarity between two user messages (skipping the assistant response between them) indicates the user re-asked — implying the first answer was unhelpful.
+Detects when users rephrase or repeat a question using TF-IDF cosine similarity.
 
 ```python
 from sigx import RephraseDetector
@@ -124,7 +196,7 @@ detector = RephraseDetector(
 
 ### SentimentDetector
 
-Rule-based pattern matching with 41 regex patterns covering corrections, negatives, positives, sarcasm, and false-positive guards. Also supports an optional ML mode using `LogisticRegression` on character n-grams.
+Hybrid regex + ML detection with 41 built-in patterns for corrections, negatives, positives, and sarcasm.
 
 ```python
 from sigx import SentimentDetector
@@ -132,7 +204,7 @@ from sigx import SentimentDetector
 # Rule-only mode (default, no extra deps)
 detector = SentimentDetector(min_confidence=0.6)
 
-# ML-enhanced mode
+# ML-enhanced mode (broader coverage)
 detector = SentimentDetector(use_ml=True, min_confidence=0.5)
 detector.fit(
     texts=["that's wrong", "thanks!", "actually I meant..."],
@@ -142,21 +214,21 @@ detector.fit(
 
 ### AbandonDetector
 
-Detects when users give up — either via explicit frustration patterns ("never mind", "I'll figure it out") or when a conversation ends on a long assistant response with no user follow-up.
+Detects when users give up via explicit patterns or conversation structure analysis.
 
 ```python
 from sigx import AbandonDetector
 
 detector = AbandonDetector(
-    min_assistant_length=300,           # Min chars for trailing-assistant detection
+    min_assistant_length=300,           # Min chars for trailing-assistant
     min_turns=3,                        # Min conversation length
-    require_unanswered_question=True,   # Only flag if last user msg ends with "?"
+    require_unanswered_question=True,   # Only flag if user asked a question
 )
 ```
 
 ### LLMExtractor
 
-Uses any OpenAI-compatible LLM for high-accuracy classification. Ideal when signal quality matters more than cost/latency.
+High-accuracy classification using any OpenAI-compatible LLM.
 
 ```python
 from sigx import LLMExtractor
@@ -175,28 +247,28 @@ detector = LLMExtractor(
 from sigx.extractors import BaseExtractor
 from sigx.types import Signal
 
-class MyExtractor(BaseExtractor):
-    name = "my_extractor"
+class ToxicityExtractor(BaseExtractor):
+    name = "toxicity"
 
     def extract(self, conversation: dict) -> list[Signal]:
         signals = []
-        # Your logic here
+        # Your detection logic here
         return signals
 
-pipeline = Pipeline([MyExtractor()])
+pipeline = Pipeline([ToxicityExtractor()])
 ```
 
 ---
 
 ## DPO Chosen Strategies
 
-A key innovation: SigX automatically infers the `chosen` response from subsequent conversation turns, solving the "implicit feedback only tells us what's BAD" problem.
+A key innovation: SigX automatically infers the `chosen` response from subsequent conversation turns.
 
-| Strategy | Behavior |
-|----------|----------|
-| `subsequent` *(default)* | Find the first positive user turn after the negative signal; the assistant response before it becomes `chosen`. If no positive found, fall back to the last assistant response (unless blocked by further complaints). |
-| `last_assistant` | Always use the final assistant response in the conversation as `chosen`. |
-| `none` | `chosen=None` (backward compatible). |
+| Strategy | Behavior | Use Case |
+|:---|:---|:---|
+| `subsequent` *(default)* | Find positive turn after negative signal; use assistant response before it as `chosen` | Best quality |
+| `last_assistant` | Use the final assistant response as `chosen` | Simple fallback |
+| `none` | `chosen=None` | Backward compatible |
 
 ```python
 from sigx import Pipeline, CHOSEN_SUBSEQUENT, CHOSEN_NONE
@@ -210,48 +282,29 @@ pipeline = Pipeline(extractors=[...], chosen_strategy=CHOSEN_NONE)
 
 ---
 
-## Evaluation
+## Data Loading
 
-Evaluate extraction quality against a labeled benchmark to measure precision, recall, and F1 per signal type.
+SigX supports multiple conversation formats:
 
 ```python
-metrics = pipeline.evaluate("benchmark.json")
-print(metrics["overall"])   # {"precision": 0.88, "recall": 0.79, "f1": 0.83, ...}
-print(metrics["per_type"])  # {"negative": {...}, "positive": {...}, ...}
+from sigx import load_conversations, load_wildchat, stream_wildchat
+
+# ShareGPT format
+convos = load_conversations("sharegpt_data.json", format="sharegpt")
+
+# OpenAI chat format
+convos = load_conversations("openai_data.json", format="openai")
+
+# Generic JSONL
+convos = load_conversations("logs.jsonl", format="jsonl")
+
+# WildChat from HuggingFace (1M+ conversations)
+convos = load_wildchat(n=1000)
+
+# Stream large datasets (memory efficient)
+for convo in stream_wildchat(n=10000):
+    signals = pipeline.run([convo])
 ```
-
-Benchmark files are JSON with `conversation_id`, `conversation`, and `ground_truth` fields:
-
-```json
-{
-  "conversations": [
-    {
-      "conversation_id": "1",
-      "conversation": [
-        {"role": "user", "content": "What is Python?"},
-        {"role": "assistant", "content": "Python is a snake."},
-        {"role": "user", "content": "That's wrong"}
-      ],
-      "ground_truth": [{"turn_index": 2, "signal_type": "negative"}]
-    }
-  ]
-}
-```
-
-### Current Benchmark Results
-
-Evaluated on a 20-conversation benchmark with regex-based extractors (no LLM):
-
-| Signal Type | Precision | Recall | F1 | Support |
-|------------|-----------|--------|-----|---------|
-| abandon | 1.00 | 1.00 | **1.00** | 3 |
-| rephrase | 1.00 | 1.00 | **1.00** | 3 |
-| positive | 1.00 | 0.80 | **0.89** | 5 |
-| correction | 0.60 | 1.00 | **0.75** | 3 |
-| negative | 1.00 | 0.40 | **0.57** | 5 |
-| **Overall** | **0.88** | **0.79** | **0.83** | 19 |
-
-> The lower recall on `negative` (0.40) reflects the inherent limitation of regex-only approaches. Adding `LLMExtractor` significantly improves this category.
 
 ---
 
@@ -261,21 +314,15 @@ Evaluated on a 20-conversation benchmark with regex-based extractors (no LLM):
 
 ```python
 pairs = pipeline.to_dpo(conversations)
-# List[PreferencePair]
-# PreferencePair(prompt="...", chosen="...", rejected="...", signal_type="...", confidence=0.85)
+# List[PreferencePair] — compatible with TRL's DPOTrainer
 ```
-
-Compatible with TRL's `DPOTrainer` and VeRL.
 
 ### KTO (Kahneman-Tversky Optimization)
 
 ```python
 examples = pipeline.to_kto(conversations)
-# List[KTOExample]
-# KTOExample(prompt="...", completion="...", label=True, confidence=0.80)
+# List[KTOExample] — binary labels: True (desirable), False (undesirable)
 ```
-
-`label=True` for positive signals, `label=False` for negative/rephrase/correction/abandon.
 
 ### Rejection Sampling
 
@@ -286,63 +333,90 @@ pairs = pipeline.to_rejection(conversations)
 
 ---
 
-## Data Loading
-
-```python
-from sigx import load_conversations, load_wildchat, stream_wildchat
-
-# ShareGPT format
-convos = load_conversations("sharegpt_data.json", format="sharegpt")
-
-# OpenAI format
-convos = load_conversations("openai_data.json", format="openai")
-
-# Generic JSONL
-convos = load_conversations("logs.jsonl", format="jsonl")
-
-# WildChat from HuggingFace
-convos = load_wildchat(n=1000)
-
-# Stream WildChat (for very large datasets)
-for convo in stream_wildchat(n=10000):
-    signals = pipeline.run([convo])
-```
-
----
-
 ## End-to-End Training Pipeline
 
-SigX is designed to fit between your chat logs and your training framework:
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#e3f2fd', 'primaryTextColor': '#1565c0', 'primaryBorderColor': '#1565c0', 'lineColor': '#90a4ae', 'secondaryColor': '#fff3e0', 'tertiaryColor': '#e8f5e9'}}}%%
 
-```
-Chat Logs                    SigX                           Training
-┌──────────┐    ┌─────────────────────────────┐    ┌──────────────────┐
-│ JSONL    │───▶│ extract → filter → convert   │───▶│ TRL DPOTrainer   │
-│ ShareGPT │    │                             │    │ TRL KTOTrainer   │
-│ WildChat │    │ signals → PreferencePair[]   │    │ VeRL             │
-│ OpenAI   │    │ signals → KTOExample[]       │    │ Custom training  │
-└──────────┘    └─────────────────────────────┘    └──────────────────┘
+graph LR
+    subgraph INPUT [" "]
+        direction TB
+        I1["📄 JSONL"]
+        I2["💬 ShareGPT"]
+        I3["🌐 WildChat"]
+        I4["⚡ OpenAI"]
+    end
+
+    subgraph SIGX ["⚡ SigX"]
+        direction LR
+        S1["Extract"] --> S2["Filter"] --> S3["Convert"]
+    end
+
+    subgraph OUTPUT [" "]
+        direction TB
+        O1["🎯 DPO Pairs"]
+        O2["📊 KTO Examples"]
+    end
+
+    INPUT --> SIGX --> OUTPUT
+
+    style INPUT fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
+    style SIGX fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c
+    style OUTPUT fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
 ```
 
 ```python
 from sigx import Pipeline, SentimentDetector, RephraseDetector, AbandonDetector
 from sigx.io import load_wildchat
 
+# 1. Configure pipeline
 pipeline = Pipeline([
     SentimentDetector(min_confidence=0.6),
     RephraseDetector(similarity_threshold=0.6),
     AbandonDetector(min_turns=3),
 ])
 
-# Load and process
+# 2. Load conversation data
 convos = load_wildchat(n=10000)
+
+# 3. Convert to DPO training pairs
 dpo_pairs = pipeline.to_dpo(convos)
 
-# Feed directly to TRL
+# 4. Feed directly to TRL
 from trl import DPOTrainer
 trainer = DPOTrainer(model=model, train_dataset=dpo_pairs)
 trainer.train()
 ```
+
+---
+
+## Evaluation
+
+Evaluate extraction quality against a labeled benchmark:
+
+```python
+metrics = pipeline.evaluate("benchmark.json")
+
+print(f"Overall F1: {metrics['overall']['f1']:.4f}")
+# Per-type breakdown
+for signal_type, m in metrics["per_type"].items():
+    print(f"  {signal_type}: P={m['precision']:.4f} R={m['recall']:.4f} F1={m['f1']:.4f}")
+```
+
+### Benchmark Results
+
+Evaluated on a 20-conversation benchmark with regex-based extractors:
+
+| Signal Type | Precision | Recall | F1 | Support |
+|:---|:---:|:---:|:---:|:---:|
+| abandon | 1.00 | 1.00 | **1.00** | 3 |
+| rephrase | 1.00 | 1.00 | **1.00** | 3 |
+| positive | 1.00 | 0.80 | **0.89** | 5 |
+| correction | 0.60 | 1.00 | **0.75** | 3 |
+| negative | 1.00 | 0.40 | **0.57** | 5 |
+| **Overall** | **0.88** | **0.79** | **0.83** | 19 |
+
+> Adding `LLMExtractor` significantly improves recall on `negative` and `correction` types.
 
 ---
 
@@ -352,6 +426,7 @@ trainer.train()
 sigx/
 ├── pipeline.py          # Orchestration: extract → filter → convert
 ├── types.py             # Core dataclasses: Signal, PreferencePair, KTOExample
+├── exceptions.py        # Custom exception hierarchy
 ├── extractors/
 │   ├── base.py          # Abstract BaseExtractor
 │   ├── rephrase.py      # TF-IDF cosine similarity rephrase detection
@@ -370,13 +445,24 @@ sigx/
 
 ## Research Background
 
-SigX builds on growing evidence that implicit feedback from real user interactions produces better alignment data than synthetic alternatives:
+SigX is built on growing evidence that **implicit feedback from real user interactions produces better alignment data** than synthetic alternatives:
 
-- **WildFeedback** (Microsoft, 2024): Extracted 20K preference pairs from 148K real ChatGPT conversations. Models fine-tuned on this data significantly outperformed those trained on UltraFeedback across AlpacaEval 2, Arena-Hard, and MT-Bench.
-- **WildReward** (Tsinghua KEG, 2026): Trained reward models directly from in-the-wild interactions without human-annotated preferences, achieving SOTA on cross-sample consistency and calibration.
-- **IFllm** (2026): Collected 1,336 multi-turn questions and demonstrated that implicit feedback signals substantially improve reward model pairwise accuracy (55% → 64%).
+| Paper | Institution | Year | Key Finding |
+|:---|:---|:---:|:---|
+| [WildFeedback](https://arxiv.org/abs/2408.15549) | Microsoft Research | 2024 | 20K preference pairs from 148K ChatGPT conversations outperformed UltraFeedback on AlpacaEval 2, Arena-Hard, MT-Bench |
+| [WildReward](https://arxiv.org/abs/2602.08829) | Tsinghua KEG | 2026 | 186k WildFB dataset; RMs trained on in-the-wild interactions achieve SOTA on RewardBench, RM-Bench, and superior calibration |
+| [IFLLM](https://arxiv.org/abs/2606.20482) | UMass | 2026 | Implicit feedback (mouse/eye tracking) boosted reward model pairwise accuracy from 55% to 64% |
 
-The key insight across all these works: **real user feedback captures nuance that synthetic data misses**, and **the signals are already present in existing chat logs — they just need to be extracted**.
+**The key insight**: Real user feedback captures nuance that synthetic data misses, and the signals are already present in existing chat logs — they just need to be extracted.
+
+### How SigX Relates
+
+| Project | Focus | SigX Connection |
+|:---|:---|:---|
+| [WildFeedback](https://arxiv.org/abs/2408.15549) | Extracting preference pairs from in-situ feedback | SigX implements the extraction pipeline in Python |
+| [WildReward](https://arxiv.org/abs/2602.08829) | Training reward models from wild interactions | SigX output can feed reward model training |
+| [TRL](https://github.com/huggingface/trl) | Post-training (DPO/KTO/PPO) | SigX output is TRL-compatible |
+| [VeRL](https://github.com/volcengine/verl) | RLHF framework | SigX output works with VeRL |
 
 ---
 
@@ -388,10 +474,16 @@ cd sigx
 pip install -e ".[dev]"
 
 # Run tests
-pytest                          # 62 tests
+pytest                    # 70 tests
+pytest --cov=sigx         # With coverage
 
 # Lint
-ruff check .
+ruff check .              # Lint
+ruff format .             # Format
+
+# Type check
+mypy sigx/                # mypy
+pyright                   # pyright
 ```
 
 ---
@@ -413,3 +505,13 @@ ruff check .
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+<div align="center">
+
+**Built with care for the LLM alignment community.**
+
+[Report Bug](https://github.com/fengrru/sigx/issues) · [Request Feature](https://github.com/fengrru/sigx/issues) · [Contributing Guide](CONTRIBUTING.md)
+
+</div>
