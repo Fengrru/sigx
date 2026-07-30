@@ -88,7 +88,9 @@ class QualityGate:
         n_after_conf = len(filtered)
         logger.debug(
             "Confidence filter (>=%.2f): %d → %d",
-            self.min_confidence, n_total, n_after_conf,
+            self.min_confidence,
+            n_total,
+            n_after_conf,
         )
 
         if self.deduplicate:

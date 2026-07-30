@@ -97,9 +97,7 @@ class RephraseDetector(BaseExtractor):
                 continue
 
             if sim >= self.similarity_threshold:
-                assistant_turn = self._get_assistant_between(
-                    turns, prev_turn_idx, curr_turn_idx
-                )
+                assistant_turn = self._get_assistant_between(turns, prev_turn_idx, curr_turn_idx)
 
                 signals.append(
                     Signal(
@@ -111,9 +109,7 @@ class RephraseDetector(BaseExtractor):
                         context={
                             "previous_query": prev_text[:500],
                             "rejected_response": (
-                                assistant_turn.get("content", "")[:500]
-                                if assistant_turn
-                                else ""
+                                assistant_turn.get("content", "")[:500] if assistant_turn else ""
                             ),
                             "similarity": round(sim, 4),
                             "method": "tfidf",
@@ -135,9 +131,7 @@ class RephraseDetector(BaseExtractor):
         return pairs
 
     @staticmethod
-    def _get_assistant_between(
-        turns: List[Dict], start: int, end: int
-    ) -> Optional[Dict]:
+    def _get_assistant_between(turns: List[Dict], start: int, end: int) -> Optional[Dict]:
         for i in range(start + 1, end):
             if turns[i].get("role") in ("assistant", "gpt", "model"):
                 return turns[i]

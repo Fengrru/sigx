@@ -229,8 +229,7 @@ class SentimentDetector(BaseExtractor):
 
         if len(set(filtered_labels)) < 2:
             logger.warning(
-                "ML training requires at least 2 classes; got %d. "
-                "ML mode disabled.",
+                "ML training requires at least 2 classes; got %d. ML mode disabled.",
                 len(set(filtered_labels)),
             )
             self.use_ml = False
@@ -240,14 +239,19 @@ class SentimentDetector(BaseExtractor):
         lr_params = {"C": kwargs.pop("C", 1.0), "max_iter": kwargs.pop("max_iter", 1000)}
         lr_params.update(kwargs)
 
-        self._ml_pipeline = SKLPipeline([
-            ("vectorizer", CountVectorizer(
-                analyzer="char_wb",
-                ngram_range=(2, 4),
-                max_features=8000,
-            )),
-            ("classifier", LogisticRegression(**lr_params)),
-        ])
+        self._ml_pipeline = SKLPipeline(
+            [
+                (
+                    "vectorizer",
+                    CountVectorizer(
+                        analyzer="char_wb",
+                        ngram_range=(2, 4),
+                        max_features=8000,
+                    ),
+                ),
+                ("classifier", LogisticRegression(**lr_params)),
+            ]
+        )
         self._ml_pipeline.fit(filtered_texts, filtered_labels)
 
         logger.info(

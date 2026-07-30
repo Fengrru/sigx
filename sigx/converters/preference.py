@@ -76,7 +76,8 @@ def _find_chosen_from_signals(
                                 logger.debug(
                                     "Found chosen via subsequent positive"
                                     " at turn %d for signal at turn %d",
-                                    i, signal_turn,
+                                    i,
+                                    signal_turn,
                                 )
                                 return chosen
 
@@ -203,7 +204,11 @@ def to_dpo(
         chosen = None
         if chosen_strategy != CHOSEN_NONE and conversations is not None:
             chosen = _find_chosen_from_signals(
-                sig, conversations, positive_turns, negative_turns, chosen_strategy,
+                sig,
+                conversations,
+                positive_turns,
+                negative_turns,
+                chosen_strategy,
             )
 
         pairs.append(

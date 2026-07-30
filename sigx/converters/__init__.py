@@ -8,6 +8,10 @@ from .preference import (
 )
 
 __all__ = [
-    "to_dpo", "to_kto", "to_rejection",
-    "CHOSEN_NONE", "CHOSEN_SUBSEQUENT", "CHOSEN_LAST_ASSISTANT",
+    "to_dpo",
+    "to_kto",
+    "to_rejection",
+    "CHOSEN_NONE",
+    "CHOSEN_SUBSEQUENT",
+    "CHOSEN_LAST_ASSISTANT",
 ]

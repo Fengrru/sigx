@@ -47,57 +47,61 @@ class LengthCheckerExtractor(BaseExtractor):
             # Check for too-short responses
             if len(response) < self.min_response_length:
                 confidence = min(
-                    1.0,
-                    (self.min_response_length - len(response)) / self.min_response_length
+                    1.0, (self.min_response_length - len(response)) / self.min_response_length
                 )
                 if confidence >= self.min_confidence:
-                    signals.append(Signal(
-                        conversation_id=conv_id,
-                        turn_index=i,
-                        signal_type="negative",
-                        confidence=round(confidence, 4),
-                        evidence=response[:500],
-                        context={
-                            "method": "length_checker",
-                            "reason": "response_too_short",
-                            "response_length": len(response),
-                            "min_expected": self.min_response_length,
-                        },
-                    ))
+                    signals.append(
+                        Signal(
+                            conversation_id=conv_id,
+                            turn_index=i,
+                            signal_type="negative",
+                            confidence=round(confidence, 4),
+                            evidence=response[:500],
+                            context={
+                                "method": "length_checker",
+                                "reason": "response_too_short",
+                                "response_length": len(response),
+                                "min_expected": self.min_response_length,
+                            },
+                        )
+                    )
 
             # Check for too-long responses
             elif len(response) > self.max_response_length:
                 confidence = min(
-                    1.0,
-                    (len(response) - self.max_response_length) / self.max_response_length
+                    1.0, (len(response) - self.max_response_length) / self.max_response_length
                 )
                 if confidence >= self.min_confidence:
-                    signals.append(Signal(
-                        conversation_id=conv_id,
-                        turn_index=i,
-                        signal_type="negative",
-                        confidence=round(confidence, 4),
-                        evidence=response[:500],
-                        context={
-                            "method": "length_checker",
-                            "reason": "response_too_long",
-                            "response_length": len(response),
-                            "max_expected": self.max_response_length,
-                        },
-                    ))
+                    signals.append(
+                        Signal(
+                            conversation_id=conv_id,
+                            turn_index=i,
+                            signal_type="negative",
+                            confidence=round(confidence, 4),
+                            evidence=response[:500],
+                            context={
+                                "method": "length_checker",
+                                "reason": "response_too_long",
+                                "response_length": len(response),
+                                "max_expected": self.max_response_length,
+                            },
+                        )
+                    )
 
         return signals
 
 
 def main():
     # Create pipeline with custom extractor
-    pipeline = Pipeline([
-        LengthCheckerExtractor(
-            min_response_length=10,
-            max_response_length=100,
-            min_confidence=0.5,
-        ),
-    ])
+    pipeline = Pipeline(
+        [
+            LengthCheckerExtractor(
+                min_response_length=10,
+                max_response_length=100,
+                min_confidence=0.5,
+            ),
+        ]
+    )
 
     conversations = [
         {

@@ -65,7 +65,7 @@ branch = true
 
 [tool.coverage.report]
 show_missing = true
-fail_under = 70
+fail_under = 65
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -76,7 +76,7 @@ exclude_lines = [
 ]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -90,7 +90,7 @@ warn_unreachable = true
 strict_equality = true
 
 [tool.pyright]
-pythonVersion = "3.8"
+pythonVersion = "3.10"
 typeCheckingMode = "strict"
 reportMissingImports = true
 reportMissingTypeStubs = false

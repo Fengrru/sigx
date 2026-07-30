@@ -1,4 +1,5 @@
 """Tests for pipeline module."""
+
 from sigx.extractors import RephraseDetector, SentimentDetector
 from sigx.filters import QualityGate
 from sigx.pipeline import Pipeline
@@ -7,8 +8,7 @@ from sigx.pipeline import Pipeline
 class TestPipeline:
     def test_empty_conversations(self):
         pipeline = Pipeline(
-            extractors=[RephraseDetector()],
-            quality_gate=QualityGate(min_confidence=0.5)
+            extractors=[RephraseDetector()], quality_gate=QualityGate(min_confidence=0.5)
         )
         signals = pipeline.run([])
         assert signals == []
@@ -16,7 +16,7 @@ class TestPipeline:
     def test_single_conversation(self):
         pipeline = Pipeline(
             extractors=[SentimentDetector(min_confidence=0.5)],
-            quality_gate=QualityGate(min_confidence=0.5)
+            quality_gate=QualityGate(min_confidence=0.5),
         )
         convos = [
             {
@@ -25,7 +25,7 @@ class TestPipeline:
                     {"role": "user", "content": "What is Python?"},
                     {"role": "assistant", "content": "Python is a programming language."},
                     {"role": "user", "content": "Thanks! That was helpful."},
-                ]
+                ],
             }
         ]
         signals = pipeline.run(convos)
@@ -37,7 +37,7 @@ class TestPipeline:
                 RephraseDetector(similarity_threshold=0.3),
                 SentimentDetector(min_confidence=0.5),
             ],
-            quality_gate=QualityGate(min_confidence=0.5)
+            quality_gate=QualityGate(min_confidence=0.5),
         )
         convos = [
             {
@@ -45,8 +45,11 @@ class TestPipeline:
                 "conversation": [
                     {"role": "user", "content": "What is Python programming language?"},
                     {"role": "assistant", "content": "Python is a snake."},
-                    {"role": "user", "content": "What is Python programming language and how to use it?"},
-                ]
+                    {
+                        "role": "user",
+                        "content": "What is Python programming language and how to use it?",
+                    },
+                ],
             }
         ]
         signals = pipeline.run(convos)
@@ -55,7 +58,7 @@ class TestPipeline:
     def test_to_dpo(self):
         pipeline = Pipeline(
             extractors=[SentimentDetector(min_confidence=0.5)],
-            quality_gate=QualityGate(min_confidence=0.5)
+            quality_gate=QualityGate(min_confidence=0.5),
         )
         convos = [
             {
@@ -64,7 +67,7 @@ class TestPipeline:
                     {"role": "user", "content": "What is Python?"},
                     {"role": "assistant", "content": "Python is a snake."},
                     {"role": "user", "content": "That's not what I asked"},
-                ]
+                ],
             }
         ]
         pairs = pipeline.to_dpo(convos)
@@ -74,7 +77,7 @@ class TestPipeline:
     def test_to_kto(self):
         pipeline = Pipeline(
             extractors=[SentimentDetector(min_confidence=0.5)],
-            quality_gate=QualityGate(min_confidence=0.5)
+            quality_gate=QualityGate(min_confidence=0.5),
         )
         convos = [
             {
@@ -83,7 +86,7 @@ class TestPipeline:
                     {"role": "user", "content": "What is Python?"},
                     {"role": "assistant", "content": "Python is a programming language."},
                     {"role": "user", "content": "Thanks! That was helpful."},
-                ]
+                ],
             }
         ]
         examples = pipeline.to_kto(convos)
@@ -92,7 +95,7 @@ class TestPipeline:
     def test_return_report(self):
         pipeline = Pipeline(
             extractors=[SentimentDetector(min_confidence=0.5)],
-            quality_gate=QualityGate(min_confidence=0.5)
+            quality_gate=QualityGate(min_confidence=0.5),
         )
         convos = [
             {
@@ -101,7 +104,7 @@ class TestPipeline:
                     {"role": "user", "content": "What is Python?"},
                     {"role": "assistant", "content": "Python is a programming language."},
                     {"role": "user", "content": "Thanks! That was helpful."},
-                ]
+                ],
             }
         ]
         signals, report = pipeline.run(convos, return_report=True)
@@ -113,7 +116,7 @@ class TestPipeline:
     def test_report_method(self):
         pipeline = Pipeline(
             extractors=[SentimentDetector(min_confidence=0.5)],
-            quality_gate=QualityGate(min_confidence=0.5)
+            quality_gate=QualityGate(min_confidence=0.5),
         )
         convos = [
             {
@@ -122,7 +125,7 @@ class TestPipeline:
                     {"role": "user", "content": "What is Python?"},
                     {"role": "assistant", "content": "Python is a programming language."},
                     {"role": "user", "content": "Thanks! That was helpful."},
-                ]
+                ],
             }
         ]
         report_text = pipeline.report(convos)
@@ -133,7 +136,7 @@ class TestPipeline:
         """to_kto with return_report=True returns a non-empty report dict."""
         pipeline = Pipeline(
             extractors=[SentimentDetector(min_confidence=0.5)],
-            quality_gate=QualityGate(min_confidence=0.5)
+            quality_gate=QualityGate(min_confidence=0.5),
         )
         convos = [
             {
@@ -142,7 +145,7 @@ class TestPipeline:
                     {"role": "user", "content": "What is Python?"},
                     {"role": "assistant", "content": "Python is a programming language."},
                     {"role": "user", "content": "Thanks! That was helpful."},
-                ]
+                ],
             }
         ]
         examples, report = pipeline.to_kto(convos, return_report=True)
@@ -156,7 +159,7 @@ class TestPipeline:
         """Pipeline handles Chinese/Unicode conversations."""
         pipeline = Pipeline(
             extractors=[SentimentDetector(min_confidence=0.5)],
-            quality_gate=QualityGate(min_confidence=0.5)
+            quality_gate=QualityGate(min_confidence=0.5),
         )
         convos = [
             {
@@ -165,7 +168,7 @@ class TestPipeline:
                     {"role": "user", "content": "Python是什么？"},
                     {"role": "assistant", "content": "Python是一种编程语言。"},
                     {"role": "user", "content": "谢谢，很有帮助！"},
-                ]
+                ],
             }
         ]
         signals = pipeline.run(convos)
@@ -176,18 +179,20 @@ class TestPipeline:
         """Pipeline handles a batch of conversations."""
         pipeline = Pipeline(
             extractors=[SentimentDetector(min_confidence=0.5)],
-            quality_gate=QualityGate(min_confidence=0.5)
+            quality_gate=QualityGate(min_confidence=0.5),
         )
         convos = []
         for i in range(20):
-            convos.append({
-                "conversation_id": str(i),
-                "conversation": [
-                    {"role": "user", "content": "What is Python?"},
-                    {"role": "assistant", "content": "Python is a programming language."},
-                    {"role": "user", "content": "That's wrong"},
-                ]
-            })
+            convos.append(
+                {
+                    "conversation_id": str(i),
+                    "conversation": [
+                        {"role": "user", "content": "What is Python?"},
+                        {"role": "assistant", "content": "Python is a programming language."},
+                        {"role": "user", "content": "That's wrong"},
+                    ],
+                }
+            )
         signals = pipeline.run(convos)
         assert len(signals) >= 1
 
@@ -195,7 +200,7 @@ class TestPipeline:
         """to_dpo with return_report=True returns stats."""
         pipeline = Pipeline(
             extractors=[SentimentDetector(min_confidence=0.5)],
-            quality_gate=QualityGate(min_confidence=0.5)
+            quality_gate=QualityGate(min_confidence=0.5),
         )
         convos = [
             {
@@ -204,7 +209,7 @@ class TestPipeline:
                     {"role": "user", "content": "What is Python?"},
                     {"role": "assistant", "content": "Python is a snake."},
                     {"role": "user", "content": "That's not what I asked"},
-                ]
+                ],
             }
         ]
         pairs, report = pipeline.to_dpo(convos, return_report=True)
@@ -215,7 +220,7 @@ class TestPipeline:
         """evaluate() works with a list of benchmark items."""
         pipeline = Pipeline(
             extractors=[SentimentDetector(min_confidence=0.5)],
-            quality_gate=QualityGate(min_confidence=0.3)
+            quality_gate=QualityGate(min_confidence=0.3),
         )
         benchmark = [
             {
@@ -246,9 +251,10 @@ class TestPipeline:
     def test_evaluate_with_file_path(self):
         """evaluate() accepts a JSON file path."""
         import os
+
         pipeline = Pipeline(
             extractors=[SentimentDetector(min_confidence=0.5)],
-            quality_gate=QualityGate(min_confidence=0.3)
+            quality_gate=QualityGate(min_confidence=0.3),
         )
         benchmark_path = os.path.join(os.path.dirname(__file__), "benchmark.json")
         metrics = pipeline.evaluate(benchmark_path)
@@ -268,7 +274,7 @@ class TestPipeline:
         """evaluate() breaks down metrics by signal type."""
         pipeline = Pipeline(
             extractors=[SentimentDetector(min_confidence=0.5)],
-            quality_gate=QualityGate(min_confidence=0.3)
+            quality_gate=QualityGate(min_confidence=0.3),
         )
         benchmark = [
             {

@@ -1,4 +1,5 @@
 """Tests for filters module."""
+
 from sigx.filters import QualityGate
 from sigx.types import Signal
 
@@ -17,14 +18,14 @@ class TestQualityGate:
                 turn_index=0,
                 signal_type="negative",
                 confidence=0.5,
-                evidence="test"
+                evidence="test",
             ),
             Signal(
                 conversation_id="1",
                 turn_index=1,
                 signal_type="negative",
                 confidence=0.8,
-                evidence="test"
+                evidence="test",
             ),
         ]
         filtered = gate(signals)
@@ -39,14 +40,14 @@ class TestQualityGate:
                 turn_index=0,
                 signal_type="negative",
                 confidence=0.8,
-                evidence="test"
+                evidence="test",
             ),
             Signal(
                 conversation_id="1",
                 turn_index=0,
                 signal_type="negative",
                 confidence=0.9,
-                evidence="test"
+                evidence="test",
             ),
         ]
         filtered = gate(signals)
@@ -60,7 +61,7 @@ class TestQualityGate:
                 turn_index=i,
                 signal_type="negative",
                 confidence=0.8,
-                evidence="test"
+                evidence="test",
             )
             for i in range(5)
         ]
@@ -75,14 +76,14 @@ class TestQualityGate:
                 turn_index=0,
                 signal_type="negative",
                 confidence=0.5,
-                evidence="test"
+                evidence="test",
             ),
             Signal(
                 conversation_id="1",
                 turn_index=1,
                 signal_type="negative",
                 confidence=0.8,
-                evidence="test"
+                evidence="test",
             ),
         ]
         filtered, report = gate.filter_with_report(signals)

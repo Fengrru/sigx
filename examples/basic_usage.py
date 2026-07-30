@@ -10,11 +10,13 @@ from sigx import AbandonDetector, Pipeline, RephraseDetector, SentimentDetector
 
 def main():
     # Create a pipeline with multiple extractors
-    pipeline = Pipeline([
-        RephraseDetector(similarity_threshold=0.6),
-        SentimentDetector(min_confidence=0.6),
-        AbandonDetector(min_turns=3),
-    ])
+    pipeline = Pipeline(
+        [
+            RephraseDetector(similarity_threshold=0.6),
+            SentimentDetector(min_confidence=0.6),
+            AbandonDetector(min_turns=3),
+        ]
+    )
 
     # Sample conversations
     conversations = [
@@ -41,7 +43,7 @@ def main():
                 {"role": "user", "content": "How do I sort a list in Python?"},
                 {"role": "assistant", "content": "You can use the sorted() function."},
                 {"role": "user", "content": "Perfect, thanks!"},
-            ]
+            ],
         },
         {
             "conversation_id": "example-3",
@@ -49,7 +51,7 @@ def main():
                 {"role": "user", "content": "Explain neural networks."},
                 {"role": "assistant", "content": "Neural networks are computational models."},
                 {"role": "user", "content": "Can you explain neural networks in more detail?"},
-            ]
+            ],
         },
     ]
 
@@ -60,8 +62,10 @@ def main():
     signals = pipeline.run(conversations)
 
     for s in signals:
-        print(f"  [{s.signal_type:10s}] conv={s.conversation_id} "
-              f"turn={s.turn_index} conf={s.confidence:.2f}")
+        print(
+            f"  [{s.signal_type:10s}] conv={s.conversation_id} "
+            f"turn={s.turn_index} conf={s.confidence:.2f}"
+        )
         print(f"    Evidence: {s.evidence[:80]}...")
         print()
 

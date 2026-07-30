@@ -1,4 +1,5 @@
 """Tests for extractors module."""
+
 import pytest
 
 from sigx.extractors import AbandonDetector, BaseExtractor, RephraseDetector, SentimentDetector
@@ -24,7 +25,10 @@ LONG_CONV = {
     "conversation": [
         {"role": "user", "content": "What is Python programming language? " + LONG_TEXT},
         {"role": "assistant", "content": LONG_TEXT},
-        {"role": "user", "content": "What is Python programming language and how to use it? " + LONG_TEXT},
+        {
+            "role": "user",
+            "content": "What is Python programming language and how to use it? " + LONG_TEXT,
+        },
     ],
 }
 
@@ -50,7 +54,7 @@ class TestRephraseDetector:
         detector = RephraseDetector()
         conv = {
             "conversation_id": "1",
-            "conversation": [{"role": "user", "content": "What is Python?"}]
+            "conversation": [{"role": "user", "content": "What is Python?"}],
         }
         signals = detector.extract(conv)
         assert signals == []
@@ -62,8 +66,11 @@ class TestRephraseDetector:
             "conversation": [
                 {"role": "user", "content": "What is Python programming language?"},
                 {"role": "assistant", "content": "Python is a high-level programming language."},
-                {"role": "user", "content": "What is Python programming language and how to use it?"},
-            ]
+                {
+                    "role": "user",
+                    "content": "What is Python programming language and how to use it?",
+                },
+            ],
         }
         signals = detector.extract(conv)
         assert len(signals) == 1
@@ -79,7 +86,7 @@ class TestRephraseDetector:
                 {"role": "user", "content": "What is Python programming language?"},
                 {"role": "assistant", "content": "Python is a high-level programming language."},
                 {"role": "user", "content": "How do I install Java on Windows?"},
-            ]
+            ],
         }
         signals = detector.extract(conv)
         assert len(signals) == 0
@@ -130,7 +137,7 @@ class TestSentimentDetector:
                 {"role": "user", "content": "What is Python?"},
                 {"role": "assistant", "content": "Python is a programming language."},
                 {"role": "user", "content": "That's not what I asked"},
-            ]
+            ],
         }
         signals = detector.extract(conv)
         assert len(signals) >= 1
@@ -144,7 +151,7 @@ class TestSentimentDetector:
                 {"role": "user", "content": "What is Python?"},
                 {"role": "assistant", "content": "Python is a programming language."},
                 {"role": "user", "content": "Thanks! That was helpful."},
-            ]
+            ],
         }
         signals = detector.extract(conv)
         assert len(signals) >= 1
@@ -158,7 +165,7 @@ class TestSentimentDetector:
                 {"role": "user", "content": "What is Python?"},
                 {"role": "assistant", "content": "Python is a snake."},
                 {"role": "user", "content": "Actually I meant the programming language"},
-            ]
+            ],
         }
         signals = detector.extract(conv)
         assert len(signals) >= 1
@@ -217,9 +224,14 @@ class TestSentimentDetector:
                 "no I meant something else",
             ],
             labels=[
-                "negative", "negative", "negative",
-                "positive", "positive", "positive",
-                "correction", "correction",
+                "negative",
+                "negative",
+                "negative",
+                "positive",
+                "positive",
+                "positive",
+                "correction",
+                "correction",
             ],
         )
         # After training, extract on a simple conversation
@@ -228,7 +240,10 @@ class TestSentimentDetector:
             "conversation": [
                 {"role": "user", "content": "What is Python?"},
                 {"role": "assistant", "content": "Python is a snake."},
-                {"role": "user", "content": "that's completely wrong, Python is a programming language"},
+                {
+                    "role": "user",
+                    "content": "that's completely wrong, Python is a programming language",
+                },
             ],
         }
         signals = detector.extract(conv)
@@ -266,7 +281,7 @@ class TestAbandonDetector:
             "conversation": [
                 {"role": "user", "content": "Hi"},
                 {"role": "assistant", "content": "Hello"},
-            ]
+            ],
         }
         signals = detector.extract(conv)
         assert len(signals) == 0
@@ -279,7 +294,7 @@ class TestAbandonDetector:
                 {"role": "user", "content": "Help me with Python"},
                 {"role": "assistant", "content": "Sure, what do you need?"},
                 {"role": "user", "content": "Never mind, I'll figure it out myself"},
-            ]
+            ],
         }
         signals = detector.extract(conv)
         assert len(signals) == 1
@@ -298,7 +313,11 @@ class TestAbandonDetector:
                 {"role": "user", "content": "I need help with Python."},
                 {"role": "assistant", "content": "What specifically do you need?"},
                 {"role": "user", "content": "How do I read a CSV file?"},
-                {"role": "assistant", "content": "Here is a detailed guide on reading CSV files in Python. " + "First, import the csv module. " * 20},
+                {
+                    "role": "assistant",
+                    "content": "Here is a detailed guide on reading CSV files in Python. "
+                    + "First, import the csv module. " * 20,
+                },
             ],
         }
         signals = detector.extract(conv)
@@ -318,12 +337,18 @@ class TestAbandonDetector:
                 {"role": "user", "content": "I need help with Python."},
                 {"role": "assistant", "content": "Sure! Python is great."},
                 {"role": "user", "content": "Thanks, that's exactly what I needed."},
-                {"role": "assistant", "content": "Here is more detailed information about Python programming... " + "Python " * 30},
+                {
+                    "role": "assistant",
+                    "content": "Here is more detailed information about Python programming... "
+                    + "Python " * 30,
+                },
             ],
         }
         signals = detector.extract(conv)
         # User's last message was not a question, so should NOT flag as abandon
-        abandon_signals = [s for s in signals if s.context.get("reason") == "conversation_ends_on_assistant"]
+        abandon_signals = [
+            s for s in signals if s.context.get("reason") == "conversation_ends_on_assistant"
+        ]
         assert len(abandon_signals) == 0
 
     def test_new_frustration_patterns(self):

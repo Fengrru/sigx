@@ -39,14 +39,16 @@ def create_sample_data():
 
     # Generic JSONL format
     jsonl_lines = [
-        json.dumps({
-            "conversation_id": "jsonl-1",
-            "conversation": [
-                {"role": "user", "content": "What is Docker?"},
-                {"role": "assistant", "content": "Docker is a containerization platform."},
-                {"role": "user", "content": "Not helpful."},
-            ]
-        })
+        json.dumps(
+            {
+                "conversation_id": "jsonl-1",
+                "conversation": [
+                    {"role": "user", "content": "What is Docker?"},
+                    {"role": "assistant", "content": "Docker is a containerization platform."},
+                    {"role": "user", "content": "Not helpful."},
+                ],
+            }
+        )
     ]
 
     return sharegpt_data, openai_data, jsonl_lines

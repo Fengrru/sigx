@@ -1,4 +1,5 @@
 """Performance tests for SigX pipeline."""
+
 import time
 
 from sigx import AbandonDetector, Pipeline, RephraseDetector, SentimentDetector
@@ -9,16 +10,24 @@ def _generate_conversations(n: int) -> list:
     """Generate n test conversations."""
     conversations = []
     for i in range(n):
-        conversations.append({
-            "conversation_id": f"perf-{i}",
-            "conversation": [
-                {"role": "user", "content": f"What is topic {i}?"},
-                {"role": "assistant", "content": f"Topic {i} is a subject about various things."},
-                {"role": "user", "content": f"Can you explain topic {i} in more detail?"},
-                {"role": "assistant", "content": f"Topic {i} encompasses many aspects including theory and practice."},
-                {"role": "user", "content": "Thanks, that helps!"},
-            ]
-        })
+        conversations.append(
+            {
+                "conversation_id": f"perf-{i}",
+                "conversation": [
+                    {"role": "user", "content": f"What is topic {i}?"},
+                    {
+                        "role": "assistant",
+                        "content": f"Topic {i} is a subject about various things.",
+                    },
+                    {"role": "user", "content": f"Can you explain topic {i} in more detail?"},
+                    {
+                        "role": "assistant",
+                        "content": f"Topic {i} encompasses many aspects including theory and practice.",
+                    },
+                    {"role": "user", "content": "Thanks, that helps!"},
+                ],
+            }
+        )
     return conversations
 
 
@@ -26,15 +35,23 @@ def _generate_conversations_with_negative(n: int) -> list:
     """Generate n test conversations with negative signals for DPO conversion."""
     conversations = []
     for i in range(n):
-        conversations.append({
-            "conversation_id": f"perf-dpo-{i}",
-            "conversation": [
-                {"role": "user", "content": f"What is topic {i}?"},
-                {"role": "assistant", "content": f"Topic {i} is a subject about various things."},
-                {"role": "user", "content": "That's wrong, incorrect answer."},
-                {"role": "assistant", "content": f"Topic {i} encompasses many aspects including theory and practice."},
-            ]
-        })
+        conversations.append(
+            {
+                "conversation_id": f"perf-dpo-{i}",
+                "conversation": [
+                    {"role": "user", "content": f"What is topic {i}?"},
+                    {
+                        "role": "assistant",
+                        "content": f"Topic {i} is a subject about various things.",
+                    },
+                    {"role": "user", "content": "That's wrong, incorrect answer."},
+                    {
+                        "role": "assistant",
+                        "content": f"Topic {i} encompasses many aspects including theory and practice.",
+                    },
+                ],
+            }
+        )
     return conversations
 
 

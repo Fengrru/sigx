@@ -227,10 +227,12 @@ class Pipeline:
             gt_map[cid] = {}
             for gt in item.get("ground_truth", []):
                 gt_map[cid][gt["turn_index"]] = gt["signal_type"]
-            gt_convos.append({
-                "conversation_id": cid,
-                "conversation": item.get("conversation", []),
-            })
+            gt_convos.append(
+                {
+                    "conversation_id": cid,
+                    "conversation": item.get("conversation", []),
+                }
+            )
 
         # 2. Run pipeline to get predictions
         pred_signals = self.run(gt_convos)
@@ -243,11 +245,9 @@ class Pipeline:
             pred_map[cid][sig.turn_index] = sig.signal_type
 
         # 3. Match predictions against ground truth
-        all_types = sorted(set(
-            s["signal_type"]
-            for item in items
-            for s in item.get("ground_truth", [])
-        ))
+        all_types = sorted(
+            set(s["signal_type"] for item in items for s in item.get("ground_truth", []))
+        )
 
         tp: Dict[str, int] = {t: 0 for t in all_types}
         fp: Dict[str, int] = {t: 0 for t in all_types}

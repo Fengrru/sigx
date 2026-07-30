@@ -24,9 +24,7 @@ def create_sample_benchmark():
                     {"role": "assistant", "content": "Python is a snake."},
                     {"role": "user", "content": "That's wrong, I meant the language."},
                 ],
-                "ground_truth": [
-                    {"turn_index": 2, "signal_type": "correction"}
-                ]
+                "ground_truth": [{"turn_index": 2, "signal_type": "correction"}],
             },
             {
                 "conversation_id": "bench-2",
@@ -35,9 +33,7 @@ def create_sample_benchmark():
                     {"role": "assistant", "content": "Use sorted()."},
                     {"role": "user", "content": "Thanks!"},
                 ],
-                "ground_truth": [
-                    {"turn_index": 2, "signal_type": "positive"}
-                ]
+                "ground_truth": [{"turn_index": 2, "signal_type": "positive"}],
             },
             {
                 "conversation_id": "bench-3",
@@ -46,9 +42,7 @@ def create_sample_benchmark():
                     {"role": "assistant", "content": "Recursion is when a function calls itself."},
                     {"role": "user", "content": "Can you explain recursion more clearly?"},
                 ],
-                "ground_truth": [
-                    {"turn_index": 2, "signal_type": "rephrase"}
-                ]
+                "ground_truth": [{"turn_index": 2, "signal_type": "rephrase"}],
             },
             {
                 "conversation_id": "bench-4",
@@ -57,9 +51,7 @@ def create_sample_benchmark():
                     {"role": "assistant", "content": "Sure, share your code."},
                     {"role": "user", "content": "Never mind, I figured it out."},
                 ],
-                "ground_truth": [
-                    {"turn_index": 2, "signal_type": "abandon"}
-                ]
+                "ground_truth": [{"turn_index": 2, "signal_type": "abandon"}],
             },
             {
                 "conversation_id": "bench-5",
@@ -68,11 +60,9 @@ def create_sample_benchmark():
                     {"role": "assistant", "content": "ML is a subset of AI that learns from data."},
                     {"role": "user", "content": "That's incorrect."},
                 ],
-                "ground_truth": [
-                    {"turn_index": 2, "signal_type": "negative"}
-                ]
+                "ground_truth": [{"turn_index": 2, "signal_type": "negative"}],
             },
-        ]
+        ],
     }
     return benchmark
 
@@ -88,11 +78,13 @@ def main():
     print(f"Created benchmark file: {benchmark_path}")
 
     # Create pipeline
-    pipeline = Pipeline([
-        SentimentDetector(min_confidence=0.5),
-        RephraseDetector(similarity_threshold=0.5),
-        AbandonDetector(min_turns=2, require_unanswered_question=False),
-    ])
+    pipeline = Pipeline(
+        [
+            SentimentDetector(min_confidence=0.5),
+            RephraseDetector(similarity_threshold=0.5),
+            AbandonDetector(min_turns=2, require_unanswered_question=False),
+        ]
+    )
 
     # Evaluate against benchmark list
     print("\n" + "=" * 60)
@@ -109,8 +101,10 @@ def main():
 
     print("\nPer-Type Breakdown:")
     for signal_type, m in metrics["per_type"].items():
-        print(f"  {signal_type:12s}: P={m['precision']:.4f}  R={m['recall']:.4f}  "
-              f"F1={m['f1']:.4f}  (n={m['support']})")
+        print(
+            f"  {signal_type:12s}: P={m['precision']:.4f}  R={m['recall']:.4f}  "
+            f"F1={m['f1']:.4f}  (n={m['support']})"
+        )
 
     # Also evaluate from file path
     print("\n" + "=" * 60)

@@ -51,6 +51,7 @@ Classification:\
 # LLMExtractor
 # ---------------------------------------------------------------------------
 
+
 class LLMExtractor(BaseExtractor):
     """
     Classify user feedback using an LLM via OpenAI-compatible API.
@@ -120,8 +121,7 @@ class LLMExtractor(BaseExtractor):
                 from openai import OpenAI  # type: ignore[import-untyped]
             except ImportError as err:
                 raise ImportError(
-                    "LLMExtractor requires the 'openai' package. "
-                    "Install with: pip install openai"
+                    "LLMExtractor requires the 'openai' package. Install with: pip install openai"
                 ) from err
             self._checked_import = True
 
@@ -136,7 +136,8 @@ class LLMExtractor(BaseExtractor):
         self._client = OpenAI(**kwargs)
         logger.info(
             "LLMExtractor client created: model=%s base_url=%s",
-            self.model, self.base_url or "default",
+            self.model,
+            self.base_url or "default",
         )
         return self._client
 

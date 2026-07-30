@@ -69,9 +69,7 @@ def load_wildchat(
     try:
         from datasets import load_dataset
     except ImportError as err:
-        raise ImportError(
-            "datasets library required. Install with: pip install datasets"
-        ) from err
+        raise ImportError("datasets library required. Install with: pip install datasets") from err
 
     ds = load_dataset("allenai/WildChat-1M", split=split, streaming=(n is None))
     if n is not None:
@@ -114,16 +112,18 @@ def _load_sharegpt(path: str, n: Optional[int] = None) -> List[Dict]:
     result = []
     for i, item in enumerate(data):
         convs = item.get("conversations", [])
-        result.append({
-            "conversation_id": str(i),
-            "conversation": [
-                {
-                    "role": "user" if c.get("from") == "human" else "assistant",
-                    "content": c.get("value", ""),
-                }
-                for c in convs
-            ],
-        })
+        result.append(
+            {
+                "conversation_id": str(i),
+                "conversation": [
+                    {
+                        "role": "user" if c.get("from") == "human" else "assistant",
+                        "content": c.get("value", ""),
+                    }
+                    for c in convs
+                ],
+            }
+        )
 
     return result
 
@@ -143,13 +143,15 @@ def _load_openai(path: str, n: Optional[int] = None) -> List[Dict]:
     result = []
     for i, item in enumerate(data):
         messages = item.get("messages", [])
-        result.append({
-            "conversation_id": str(i),
-            "conversation": [
-                {"role": m.get("role", "user"), "content": m.get("content", "")}
-                for m in messages
-            ],
-        })
+        result.append(
+            {
+                "conversation_id": str(i),
+                "conversation": [
+                    {"role": m.get("role", "user"), "content": m.get("content", "")}
+                    for m in messages
+                ],
+            }
+        )
 
     return result
 
@@ -171,18 +173,20 @@ def _load_jsonl(path: str, n: Optional[int] = None) -> List[Dict]:
                 conv = item.get("conversation") or item.get("conversations")
                 if conv is None:
                     continue
-                result.append({
-                    "conversation_id": item.get(
-                        "conversation_id", item.get("conversation_hash", str(i))
-                    ),
-                    "conversation": [
-                        {
-                            "role": t.get("role", t.get("from", "user")),
-                            "content": t.get("content", t.get("value", "")),
-                        }
-                        for t in conv
-                    ],
-                })
+                result.append(
+                    {
+                        "conversation_id": item.get(
+                            "conversation_id", item.get("conversation_hash", str(i))
+                        ),
+                        "conversation": [
+                            {
+                                "role": t.get("role", t.get("from", "user")),
+                                "content": t.get("content", t.get("value", "")),
+                            }
+                            for t in conv
+                        ],
+                    }
+                )
     except FileNotFoundError as err:
         raise DataLoadingError(f"File not found: {path}") from err
 

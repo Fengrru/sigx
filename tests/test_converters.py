@@ -1,4 +1,5 @@
 """Tests for converters module."""
+
 from sigx.converters import to_dpo, to_kto, to_rejection
 from sigx.types import Signal
 
@@ -15,7 +16,7 @@ class TestToDpo:
                 turn_index=2,
                 signal_type="positive",
                 confidence=0.8,
-                evidence="thanks"
+                evidence="thanks",
             )
         ]
         pairs = to_dpo(signals)
@@ -28,7 +29,7 @@ class TestToDpo:
                 turn_index=2,
                 signal_type="negative",
                 confidence=0.8,
-                evidence="that's wrong"
+                evidence="that's wrong",
             )
         ]
         conversations = {
@@ -52,7 +53,7 @@ class TestToDpo:
                 signal_type="rephrase",
                 confidence=0.7,
                 evidence="What is Python?",
-                context={"previous_query": "What is Python?"}
+                context={"previous_query": "What is Python?"},
             )
         ]
         conversations = {
@@ -79,7 +80,7 @@ class TestToKto:
                 turn_index=2,
                 signal_type="positive",
                 confidence=0.8,
-                evidence="thanks"
+                evidence="thanks",
             )
         ]
         conversations = {
@@ -101,7 +102,7 @@ class TestToKto:
                 turn_index=2,
                 signal_type="negative",
                 confidence=0.8,
-                evidence="that's wrong"
+                evidence="that's wrong",
             )
         ]
         conversations = {
@@ -129,7 +130,7 @@ class TestToRejection:
                 turn_index=2,
                 signal_type="negative",
                 confidence=0.8,
-                evidence="that's wrong"
+                evidence="that's wrong",
             )
         ]
         conversations = {
@@ -157,7 +158,7 @@ class TestEdgeCases:
                 turn_index=2,
                 signal_type="negative",
                 confidence=0.8,
-                evidence="不对"
+                evidence="不对",
             )
         ]
         conversations = {
@@ -179,7 +180,7 @@ class TestEdgeCases:
                 turn_index=2,
                 signal_type="positive",
                 confidence=0.8,
-                evidence="谢谢"
+                evidence="谢谢",
             )
         ]
         conversations = {
@@ -202,7 +203,7 @@ class TestEdgeCases:
                 turn_index=2,
                 signal_type="negative",
                 confidence=0.8,
-                evidence="wrong"
+                evidence="wrong",
             )
         ]
         conversations = {
@@ -225,7 +226,7 @@ class TestEdgeCases:
                 turn_index=2,
                 signal_type="abandon",
                 confidence=0.85,
-                evidence="never mind"
+                evidence="never mind",
             )
         ]
         conversations = {
@@ -254,10 +255,16 @@ class TestChosenStrategy:
         conversations = {
             "c1": [
                 {"role": "user", "content": "What is Python?"},
-                {"role": "assistant", "content": "Python is a snake."},           # turn 1 (rejected)
-                {"role": "user", "content": "Actually I meant the language."},   # turn 2 (correction)
-                {"role": "assistant", "content": "Python is a programming language."},  # turn 3 (chosen!)
-                {"role": "user", "content": "Thanks!"},                          # turn 4 (positive)
+                {"role": "assistant", "content": "Python is a snake."},  # turn 1 (rejected)
+                {
+                    "role": "user",
+                    "content": "Actually I meant the language.",
+                },  # turn 2 (correction)
+                {
+                    "role": "assistant",
+                    "content": "Python is a programming language.",
+                },  # turn 3 (chosen!)
+                {"role": "user", "content": "Thanks!"},  # turn 4 (positive)
             ],
         }
         pairs = to_dpo(signals, conversations, chosen_strategy=CHOSEN_SUBSEQUENT)
@@ -276,9 +283,12 @@ class TestChosenStrategy:
         conversations = {
             "c1": [
                 {"role": "user", "content": "What is Python?"},
-                {"role": "assistant", "content": "Python is a snake."},     # turn 1 (rejected)
-                {"role": "user", "content": "That's wrong"},                # turn 2 (negative)
-                {"role": "assistant", "content": "Python is a programming language."},  # turn 3 (chosen fallback)
+                {"role": "assistant", "content": "Python is a snake."},  # turn 1 (rejected)
+                {"role": "user", "content": "That's wrong"},  # turn 2 (negative)
+                {
+                    "role": "assistant",
+                    "content": "Python is a programming language.",
+                },  # turn 3 (chosen fallback)
             ],
         }
         pairs = to_dpo(signals, conversations, chosen_strategy=CHOSEN_SUBSEQUENT)
@@ -297,10 +307,10 @@ class TestChosenStrategy:
         conversations = {
             "c1": [
                 {"role": "user", "content": "What is Python?"},
-                {"role": "assistant", "content": "Python is a snake."},           # turn 1 (rejected)
-                {"role": "user", "content": "No, I meant the language."},         # turn 2 (correction)
-                {"role": "assistant", "content": "Python is a reptile."},         # turn 3 (also bad?)
-                {"role": "user", "content": "Still wrong"},                       # turn 4 (negative again)
+                {"role": "assistant", "content": "Python is a snake."},  # turn 1 (rejected)
+                {"role": "user", "content": "No, I meant the language."},  # turn 2 (correction)
+                {"role": "assistant", "content": "Python is a reptile."},  # turn 3 (also bad?)
+                {"role": "user", "content": "Still wrong"},  # turn 4 (negative again)
                 {"role": "assistant", "content": "Python is a programming language."},  # turn 5
             ],
         }
@@ -322,10 +332,10 @@ class TestChosenStrategy:
         conversations = {
             "c1": [
                 {"role": "user", "content": "Q?"},
-                {"role": "assistant", "content": "bad"},     # turn 1
-                {"role": "user", "content": "wrong"},        # turn 2
-                {"role": "assistant", "content": "good"},    # turn 3
-                {"role": "user", "content": "thanks"},       # turn 4
+                {"role": "assistant", "content": "bad"},  # turn 1
+                {"role": "user", "content": "wrong"},  # turn 2
+                {"role": "assistant", "content": "good"},  # turn 3
+                {"role": "user", "content": "thanks"},  # turn 4
             ],
         }
         pairs = to_dpo(signals, conversations, chosen_strategy=CHOSEN_NONE)
