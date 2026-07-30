@@ -2,6 +2,8 @@
 QualityGate — filters signals by confidence threshold and deduplication.
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Dict, List
 

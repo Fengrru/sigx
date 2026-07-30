@@ -5,6 +5,8 @@ This module provides the main Pipeline class that chains together extractors,
 filters, and converters to process conversation data end-to-end.
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Dict, Iterable, List, Optional
 

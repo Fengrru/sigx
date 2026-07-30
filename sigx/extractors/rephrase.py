@@ -8,7 +8,7 @@ This transforms that implicit signal into a structured rejection label.
 
 import logging
 import re
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -137,7 +137,7 @@ class RephraseDetector(BaseExtractor):
     @staticmethod
     def _get_assistant_between(
         turns: List[Dict], start: int, end: int
-    ) -> Dict | None:
+    ) -> Optional[Dict]:
         for i in range(start + 1, end):
             if turns[i].get("role") in ("assistant", "gpt", "model"):
                 return turns[i]
