@@ -341,21 +341,21 @@ pairs = pipeline.to_rejection(conversations)
 graph LR
     subgraph INPUT [" "]
         direction TB
-        I1["📄 JSONL"]
-        I2["💬 ShareGPT"]
-        I3["🌐 WildChat"]
-        I4["⚡ OpenAI"]
+        I1["JSONL"]
+        I2["ShareGPT"]
+        I3["WildChat"]
+        I4["OpenAI"]
     end
 
-    subgraph SIGX ["⚡ SigX"]
+    subgraph SIGX ["SigX"]
         direction LR
         S1["Extract"] --> S2["Filter"] --> S3["Convert"]
     end
 
     subgraph OUTPUT [" "]
         direction TB
-        O1["🎯 DPO Pairs"]
-        O2["📊 KTO Examples"]
+        O1["DPO Pairs"]
+        O2["KTO Examples"]
     end
 
     INPUT --> SIGX --> OUTPUT
