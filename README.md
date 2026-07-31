@@ -1,10 +1,12 @@
 <div align="center">
 
+![SigX banner](docs/assets/banner.png)
+
 [![CI](https://github.com/Fengrru/sigx/actions/workflows/ci.yml/badge.svg)](https://github.com/Fengrru/sigx/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Fengrru/sigx/branch/main/graph/badge.svg)](https://codecov.io/gh/Fengrru/sigx)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue?style=flat&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
-![F1](https://img.shields.io/badge/benchmark-F1%200.82-orange?style=flat)
+![F1](https://img.shields.io/badge/benchmark-F1%200.83-orange?style=flat)
 
 # SigX
 
@@ -117,8 +119,8 @@ for s in signals:
 
 **Output:**
 ```
-[correction] confidence=0.85 | That's not what I asked. I meant the programming language....
-[positive] confidence=0.60 | Thanks! That's exactly what I needed....
+[negative] confidence=0.95 | That's not what I asked. I meant the programming language....
+[positive] confidence=0.80 | Thanks! That's exactly what I needed....
 ```
 
 ### 2. Convert to DPO Training Pairs
@@ -133,11 +135,9 @@ for p in pairs:
 
 **Output:**
 ```
-Prompt:   User: What is Python?
-          Assistant: Python is a type of snake.
-          User: That's not what I asked. I meant the programming language.
-Rejected: Python is a type of snake.
-Chosen:   Python is a high-level programming language created by Guido van Rossum.
+Prompt:   User: What is Python?...
+Rejected: Python is a type of snake....
+Chosen:   Python is a high-level programming language created by Guido van Rossum....
 ```
 
 ### 3. Feed to TRL for Training
@@ -410,16 +410,18 @@ for signal_type, m in metrics["per_type"].items():
 
 Evaluated on a 20-conversation benchmark with regex-based extractors (default settings, no LLM):
 
+![Benchmark results](docs/assets/benchmark.png)
+
 | Signal Type | Precision | Recall | F1 | Support |
 |:---|:---:|:---:|:---:|:---:|
 | abandon | 1.00 | 1.00 | **1.00** | 3 |
 | positive | 1.00 | 1.00 | **1.00** | 5 |
-| correction | 0.75 | 1.00 | **0.86** | 3 |
-| negative | 1.00 | 0.40 | **0.57** | 5 |
-| rephrase | 1.00 | 0.33 | **0.50** | 3 |
-| **Overall** | **0.93** | **0.74** | **0.82** | 19 |
+| correction | 0.67 | 0.67 | **0.67** | 3 |
+| negative | 0.75 | 0.60 | **0.67** | 5 |
+| rephrase | 1.00 | 0.67 | **0.80** | 3 |
+| **Overall** | **0.88** | **0.79** | **0.83** | 19 |
 
-> Reproduce with `pipeline.evaluate("tests/benchmark.json")`. Adding `LLMExtractor` significantly improves recall on `negative` and `rephrase` types.
+> Reproduce with `pipeline.evaluate("tests/benchmark.json")`; regenerate the chart with `python scripts/generate_assets.py`. Adding `LLMExtractor` significantly improves recall on `negative` and `rephrase` types.
 
 ---
 
