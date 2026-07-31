@@ -410,8 +410,6 @@ for signal_type, m in metrics["per_type"].items():
 
 Evaluated on a 20-conversation benchmark with regex-based extractors (default settings, no LLM):
 
-![Benchmark results](docs/assets/benchmark.png)
-
 | Signal Type | Precision | Recall | F1 | Support |
 |:---|:---:|:---:|:---:|:---:|
 | abandon | 1.00 | 1.00 | **1.00** | 3 |
@@ -421,7 +419,7 @@ Evaluated on a 20-conversation benchmark with regex-based extractors (default se
 | rephrase | 1.00 | 0.67 | **0.80** | 3 |
 | **Overall** | **0.88** | **0.79** | **0.83** | 19 |
 
-> Reproduce with `pipeline.evaluate("tests/benchmark.json")`; regenerate the chart with `python scripts/generate_assets.py`. Adding `LLMExtractor` significantly improves recall on `negative` and `rephrase` types.
+> Reproduce with `pipeline.evaluate("tests/benchmark.json")`. Adding `LLMExtractor` significantly improves recall on `negative` and `rephrase` types.
 
 ---
 
