@@ -76,7 +76,11 @@ CORRECTION_PATTERNS: List[Tuple[re.Pattern, float]] = [
         (r"\b(let\s+me\s+(rephrase|clarify|be\s+more\s+specific|explain|put\s+it))\b", 0.80),
         (r"\b(that['’]s\s+not\s+(quite\s+|exactly\s+)?what\s+i)\b", 0.85),
         (r"\b(i\s+actually\s+(wanted|meant|needed|was\s+looking\s+for|was\s+asking))\b", 0.85),
-        (r"\b(what\s+i\s+(really\s+)?(meant|wanted|needed|was\s+trying))\b", 0.85),
+        (
+            r"\b(?<!exactly\s)(?<!precisely\s)(?<!just\s)"
+            r"(what\s+i\s+(really\s+)?(meant|wanted|needed|was\s+trying))\b",
+            0.85,
+        ),
         (r"\b(i\s+should\s+have\s+(said|asked|mentioned|specified))\b", 0.80),
         (r"\b(sorry[,.\s]+(i\s+meant|let\s+me|what\s+i))\b", 0.80),
         (r"\b(to\s+be\s+(clear|precise|specific|more\s+specific))\b", 0.70),

@@ -1,10 +1,10 @@
 <div align="center">
 
-![Python](https://img.shields.io/badge/python-3.8+-blue?style=flat&logo=python&logoColor=white)
+[![CI](https://github.com/Fengrru/sigx/actions/workflows/ci.yml/badge.svg)](https://github.com/Fengrru/sigx/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Fengrru/sigx/branch/main/graph/badge.svg)](https://codecov.io/gh/Fengrru/sigx)
+![Python](https://img.shields.io/badge/python-3.8%2B-blue?style=flat&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
-![Tests](https://img.shields.io/badge/tests-70%20passed-brightgreen?style=flat)
-![F1](https://img.shields.io/badge/benchmark-F1%200.83-orange?style=flat)
-![PyPI](https://img.shields.io/pypi/v/sigx?style=flat&color=blue)
+![F1](https://img.shields.io/badge/benchmark-F1%200.82-orange?style=flat)
 
 # SigX
 
@@ -84,7 +84,7 @@ Traditional LLM alignment relies on **expensive human annotations** or **synthet
 ## Quick Start
 
 ```bash
-pip install sigx
+pip install git+https://github.com/Fengrru/sigx.git
 ```
 
 ### 1. Extract Signals from Conversations
@@ -117,9 +117,8 @@ for s in signals:
 
 **Output:**
 ```
-[rephrase] confidence=0.89 | Can you explain topic 0 in more detail?...
-[negative] confidence=0.85 | That's not what I asked. I meant the prog...
-[positive] confidence=0.80 | Thanks! That's exactly what I needed....
+[correction] confidence=0.85 | That's not what I asked. I meant the programming language....
+[positive] confidence=0.60 | Thanks! That's exactly what I needed....
 ```
 
 ### 2. Convert to DPO Training Pairs
@@ -134,9 +133,11 @@ for p in pairs:
 
 **Output:**
 ```
-Prompt:   User: What is Python?...
-Rejected: Python is a type of snake....
-Chosen:   Python is a high-level programming language created by Guido van...
+Prompt:   User: What is Python?
+          Assistant: Python is a type of snake.
+          User: That's not what I asked. I meant the programming language.
+Rejected: Python is a type of snake.
+Chosen:   Python is a high-level programming language created by Guido van Rossum.
 ```
 
 ### 3. Feed to TRL for Training
@@ -155,12 +156,14 @@ trainer.train()
 
 ## Installation
 
+> PyPI release coming soon. For now, install from source:
+
 | Install Command | Includes |
 |:---|:---|
-| `pip install sigx` | Core (numpy, scikit-learn) |
-| `pip install sigx[llm]` | + OpenAI API for LLMExtractor |
-| `pip install sigx[wildchat]` | + HuggingFace datasets for WildChat |
-| `pip install sigx[dev]` | + pytest, ruff, mypy, pyright |
+| `pip install git+https://github.com/Fengrru/sigx.git` | Core (numpy, scikit-learn) |
+| `pip install "sigx[llm] @ git+https://github.com/Fengrru/sigx.git"` | + OpenAI API for LLMExtractor |
+| `pip install "sigx[wildchat] @ git+https://github.com/Fengrru/sigx.git"` | + HuggingFace datasets for WildChat |
+| `git clone https://github.com/Fengrru/sigx.git && pip install -e ".[dev]"` | + pytest, ruff, mypy, pyright |
 
 ---
 
@@ -405,18 +408,18 @@ for signal_type, m in metrics["per_type"].items():
 
 ### Benchmark Results
 
-Evaluated on a 20-conversation benchmark with regex-based extractors:
+Evaluated on a 20-conversation benchmark with regex-based extractors (default settings, no LLM):
 
 | Signal Type | Precision | Recall | F1 | Support |
 |:---|:---:|:---:|:---:|:---:|
 | abandon | 1.00 | 1.00 | **1.00** | 3 |
-| rephrase | 1.00 | 1.00 | **1.00** | 3 |
-| positive | 1.00 | 0.80 | **0.89** | 5 |
-| correction | 0.60 | 1.00 | **0.75** | 3 |
+| positive | 1.00 | 1.00 | **1.00** | 5 |
+| correction | 0.75 | 1.00 | **0.86** | 3 |
 | negative | 1.00 | 0.40 | **0.57** | 5 |
-| **Overall** | **0.88** | **0.79** | **0.83** | 19 |
+| rephrase | 1.00 | 0.33 | **0.50** | 3 |
+| **Overall** | **0.93** | **0.74** | **0.82** | 19 |
 
-> Adding `LLMExtractor` significantly improves recall on `negative` and `correction` types.
+> Reproduce with `pipeline.evaluate("tests/benchmark.json")`. Adding `LLMExtractor` significantly improves recall on `negative` and `rephrase` types.
 
 ---
 
