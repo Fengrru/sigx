@@ -16,10 +16,12 @@ from __future__ import annotations
 import json
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional
 
+from ..exceptions import LLMConnectionError, LLMResponseError
 from ..types import Signal
-from .base import BaseExtractor
+from .base import ASSISTANT_ROLES, USER_ROLES, BaseExtractor, format_history
 
 logger = logging.getLogger(__name__)
 
@@ -71,11 +73,15 @@ class LLMExtractor(BaseExtractor):
             an assistant message.
         max_tokens: Max tokens for the LLM response.
         temperature: LLM temperature (0 = deterministic).
-        batch_size: Max turns to send in one API call (batching is
-            done by sending multiple user messages in sequence; the
-            LLM processes them one at a time in the prompt).
+        batch_size: Number of turns classified concurrently (thread pool
+            size for parallel API calls). 1 = sequential.
         max_context_turns: Max previous turns to include as context.
         extra_headers: Optional dict of extra HTTP headers.
+        timeout: Per-request timeout in seconds.
+        max_retries: Number of retries for a failed API call.
+        on_error: "skip" (default) logs failures and drops the turn;
+            "raise" raises LLMConnectionError on API failure or
+            LLMResponseError when the response cannot be parsed.
     """
 
     name = "llm"
@@ -92,7 +98,14 @@ class LLMExtractor(BaseExtractor):
         batch_size: int = 1,
         max_context_turns: int = 6,
         extra_headers: Optional[Dict[str, str]] = None,
+        timeout: float = 30.0,
+        max_retries: int = 2,
+        on_error: str = "skip",
     ):
+        if on_error not in ("skip", "raise"):
+            raise ValueError(f'on_error must be "skip" or "raise", got {on_error!r}')
+        if batch_size < 1:
+            raise ValueError(f"batch_size must be >= 1, got {batch_size}")
         self.model = model
         self.base_url = base_url
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
@@ -103,6 +116,9 @@ class LLMExtractor(BaseExtractor):
         self.batch_size = batch_size
         self.max_context_turns = max_context_turns
         self.extra_headers = extra_headers
+        self.timeout = timeout
+        self.max_retries = max_retries
+        self.on_error = on_error
 
         self._client: Any = None
         self._checked_import = False
@@ -126,7 +142,7 @@ class LLMExtractor(BaseExtractor):
 
         from openai import OpenAI
 
-        kwargs: Dict = {"api_key": self.api_key}
+        kwargs: Dict = {"api_key": self.api_key, "timeout": self.timeout}
         if self.base_url is not None:
             kwargs["base_url"] = self.base_url
         if self.extra_headers is not None:
@@ -155,7 +171,7 @@ class LLMExtractor(BaseExtractor):
         candidates: List[Dict] = []
         for i, turn in enumerate(turns):
             role = turn.get("role", "")
-            if role not in ("user", "human"):
+            if role not in USER_ROLES:
                 continue
 
             text = turn.get("content", "").strip()
@@ -163,7 +179,7 @@ class LLMExtractor(BaseExtractor):
                 continue
 
             if self.require_adjacent_assistant:
-                if i == 0 or turns[i - 1].get("role") not in ("assistant", "gpt", "model"):
+                if i == 0 or turns[i - 1].get("role") not in ASSISTANT_ROLES:
                     continue
 
             candidates.append({"turn_index": i, "text": text})
@@ -171,28 +187,30 @@ class LLMExtractor(BaseExtractor):
         if not candidates:
             return []
 
-        # Build context windows and classify each candidate
+        # Classify candidates (concurrently when batch_size > 1)
+        if self.batch_size > 1 and len(candidates) > 1:
+            with ThreadPoolExecutor(max_workers=self.batch_size) as pool:
+                results = list(pool.map(lambda c: self._classify_candidate(turns, c), candidates))
+        else:
+            results = [self._classify_candidate(turns, cand) for cand in candidates]
+
         signals: List[Signal] = []
-        for cand in candidates:
-            turn_idx = cand["turn_index"]
-            user_text = cand["text"]
-
-            # Build conversation history up to this turn
-            history = self._format_history(turns, turn_idx)
-
-            # Get assistant response before this turn
-            assistant_text = ""
-            if turn_idx > 0 and turns[turn_idx - 1].get("role") in ("assistant", "gpt", "model"):
-                assistant_text = turns[turn_idx - 1].get("content", "")
-
-            # Classify via LLM
-            result = self._classify(user_text, history)
+        for cand, result in zip(candidates, results):
             if result is None:
                 continue
+            turn_idx = cand["turn_index"]
+            user_text = cand["text"]
 
             label, confidence = result
             if label == "neutral" or confidence < self.min_confidence:
                 continue
+
+            # Get assistant response before this turn
+            assistant_text = ""
+            prompt_up_to = turn_idx
+            if turn_idx > 0 and turns[turn_idx - 1].get("role") in ASSISTANT_ROLES:
+                assistant_text = turns[turn_idx - 1].get("content", "")
+                prompt_up_to = turn_idx - 1
 
             signals.append(
                 Signal(
@@ -205,12 +223,18 @@ class LLMExtractor(BaseExtractor):
                         "method": "llm",
                         "model": self.model,
                         "assistant_response": assistant_text[:500],
+                        "conversation_prompt": format_history(turns, prompt_up_to),
                     },
                 )
             )
 
         logger.debug("LLMExtractor extracted %d signals from conv %s", len(signals), conv_id)
         return signals
+
+    def _classify_candidate(self, turns: List[Dict], cand: Dict) -> Optional[tuple]:
+        """Build history for a candidate turn and classify it."""
+        history = self._format_history(turns, cand["turn_index"])
+        return self._classify(cand["text"], history)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -226,34 +250,56 @@ class LLMExtractor(BaseExtractor):
             content = turns[i].get("content", "").strip()
             if not content:
                 continue
-            if role in ("user", "human"):
+            if role in USER_ROLES:
                 lines.append(f"User: {content[:300]}")
-            elif role in ("assistant", "gpt", "model"):
+            elif role in ASSISTANT_ROLES:
                 lines.append(f"Assistant: {content[:300]}")
         return "\n".join(lines) if lines else "(start of conversation)"
 
     def _classify(self, user_message: str, history: str) -> Optional[tuple]:
-        """Call the LLM and parse the JSON response. Returns (label, confidence) or None."""
+        """Call the LLM and parse the JSON response. Returns (label, confidence) or None.
+
+        Raises:
+            LLMConnectionError: If all attempts fail and on_error="raise".
+            LLMResponseError: If the response is unparseable and on_error="raise".
+        """
         client = self._get_client()
 
         user_prompt = _USER_TEMPLATE.format(history=history, user_message=user_message[:1000])
 
-        try:
-            response = client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": _SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
-            )
-        except Exception as exc:
-            logger.warning("LLM API call failed: %s", exc)
+        last_exc: Optional[Exception] = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": _SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                )
+                break
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "LLM API call failed (attempt %d/%d): %s",
+                    attempt + 1,
+                    self.max_retries + 1,
+                    exc,
+                )
+        else:
+            if self.on_error == "raise":
+                raise LLMConnectionError(
+                    f"LLM API call failed after {self.max_retries + 1} attempts: {last_exc}"
+                ) from last_exc
             return None
 
         raw = response.choices[0].message.content or ""
-        return self._parse_response(raw)
+        parsed = self._parse_response(raw)
+        if parsed is None and self.on_error == "raise":
+            raise LLMResponseError(f"Could not parse LLM response: {raw[:200]}")
+        return parsed
 
     @staticmethod
     def _parse_response(raw: str) -> Optional[tuple]:

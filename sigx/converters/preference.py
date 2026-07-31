@@ -92,24 +92,45 @@ def _build_prompt(turns: List[Dict], up_to: int) -> str:
     return "\n".join(parts)
 
 
-def _get_assistant_response(turns: List[Dict], before_turn: int) -> Optional[str]:
+def _get_assistant_index(turns: List[Dict], before_turn: int) -> Optional[int]:
+    """Find the index of the closest assistant turn strictly before `before_turn`."""
     for i in range(before_turn - 1, -1, -1):
         if turns[i].get("role") in ("assistant", "gpt", "model"):
-            return str(turns[i].get("content", "") or "").strip()
+            return i
     return None
 
 
 def _get_prompt_and_rejected(
     signal: Signal, conversations: Dict[str, List[Dict]]
 ) -> tuple[Optional[str], Optional[str]]:
-    """Get prompt and rejected text for a signal."""
+    """Get prompt and rejected text for a signal.
+
+    The prompt is the history up to (but NOT including) the rejected
+    assistant response, so the response being judged never leaks into
+    its own prompt.
+    """
     if signal.conversation_id not in conversations:
         return None, None
 
     turns = conversations[signal.conversation_id]
-    prompt = _build_prompt(turns, signal.turn_index)
-    rejected = _get_assistant_response(turns, signal.turn_index)
+    rejected_idx = _get_assistant_index(turns, signal.turn_index)
+    if rejected_idx is None:
+        return _build_prompt(turns, signal.turn_index), None
 
+    prompt = _build_prompt(turns, rejected_idx)
+    rejected = str(turns[rejected_idx].get("content", "") or "").strip()
+    return prompt, rejected
+
+
+def _fallback_prompt_and_rejected(signal: Signal) -> tuple[str, str]:
+    """Recover prompt/rejected from signal context when conversations are absent."""
+    prompt = signal.context.get("conversation_prompt", "")
+    rejected = (
+        signal.context.get("rejected_response")
+        or signal.context.get("assistant_response")
+        or signal.context.get("last_assistant_response")
+        or ""
+    )
     return prompt, rejected
 
 
@@ -158,8 +179,7 @@ def to_dpo(
         if conversations is not None:
             prompt, rejected = _get_prompt_and_rejected(sig, conversations)
         else:
-            prompt = sig.context.get("conversation_prompt", "")
-            rejected = sig.context.get("rejected_response", "")
+            prompt, rejected = _fallback_prompt_and_rejected(sig)
 
         if not rejected:
             continue
@@ -210,12 +230,10 @@ def to_kto(
 
     for sig in signals:
         if conversations is not None:
-            prompt, rejected = _get_prompt_and_rejected(sig, conversations)
+            prompt, completion = _get_prompt_and_rejected(sig, conversations)
         else:
-            prompt = sig.context.get("conversation_prompt", "")
-            rejected = sig.context.get("rejected_response", "")
+            prompt, completion = _fallback_prompt_and_rejected(sig)
 
-        completion = rejected or sig.context.get("assistant_response", "")
         if not completion:
             continue
 

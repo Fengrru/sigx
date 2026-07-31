@@ -8,14 +8,20 @@ filters, and converters to process conversation data end-to-end.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple, overload
 
 from .converters.preference import (
     CHOSEN_SUBSEQUENT,
     to_dpo,
     to_kto,
 )
-from .exceptions import BenchmarkError, ConfigurationError
+from .exceptions import (
+    BenchmarkError,
+    ConfigurationError,
+    ConversationFormatError,
+    ExtractionError,
+    SigXError,
+)
 from .extractors.base import BaseExtractor
 from .filters.quality import QualityGate
 from .types import KTOExample, PreferencePair, Signal, generate_report
@@ -27,13 +33,21 @@ class Pipeline:
     """
     Main pipeline: extract -> filter -> convert.
 
+    Conversations are processed as a stream: only turns belonging to
+    conversations that produced raw signals are kept in memory, so
+    generators (e.g. stream_wildchat) can be consumed without
+    materializing the whole dataset.
+
+    Conversations without a "conversation_id" are assigned a positional
+    id ("0", "1", ...) consistently across extraction and conversion.
+
     Usage:
         pipeline = Pipeline(
             extractors=[RephraseDetector(), SentimentDetector()],
             quality_gate=QualityGate(min_confidence=0.6),
         )
         signals = pipeline.run(conversations)
-        pairs = pipeline.to_dpo(signals)
+        pairs = pipeline.to_dpo(conversations)
     """
 
     def __init__(
@@ -43,7 +57,9 @@ class Pipeline:
         chosen_strategy: str = CHOSEN_SUBSEQUENT,
     ):
         self.extractors = extractors
-        self.quality_gate = quality_gate or QualityGate(min_confidence=0.5)
+        # Default gate matches QualityGate's own default (0.6) so there is
+        # a single default confidence threshold across the library.
+        self.quality_gate = quality_gate or QualityGate()
         self.chosen_strategy = chosen_strategy
         logger.info(
             "Pipeline initialized with %d extractors, quality_gate min_confidence=%.2f, "
@@ -53,30 +69,56 @@ class Pipeline:
             self.chosen_strategy,
         )
 
-    def run(
+    def _run_impl(
         self,
         conversations: Iterable[Dict],
-        return_report: bool = False,
-    ) -> List[Signal] | tuple[List[Signal], Dict]:
+        collect_turns: bool = False,
+    ) -> Tuple[List[Signal], Dict, Dict[str, List[Dict]]]:
+        """Single-pass extraction over a conversation stream.
+
+        Returns (filtered_signals, report_dict, conv_map). conv_map only
+        contains conversations that produced raw signals (and only when
+        collect_turns=True), keeping memory bounded for large streams.
         """
-        Run all extractors over conversations, then filter through quality gate.
-
-        Args:
-            conversations: Iterable of conversation dicts.
-            return_report: If True, also return a dict with stats.
-
-        Returns:
-            Filtered signals, or (signals, report_dict) if return_report=True.
-        """
-        convos = list(conversations)
-        n_convos = len(convos)
-        n_turns = sum(len(c.get("conversation", [])) for c in convos)
-        logger.info("Running pipeline on %d conversations (%d total turns)", n_convos, n_turns)
-
         raw_signals: List[Signal] = []
-        for conv in convos:
+        conv_map: Dict[str, List[Dict]] = {}
+        n_convos = 0
+        n_turns = 0
+
+        for i, conv in enumerate(conversations):
+            if not isinstance(conv, dict):
+                raise ConversationFormatError(
+                    f"conversation {i} must be a dict, got {type(conv).__name__}"
+                )
+            if not conv.get("conversation_id"):
+                # Assign a positional id consistently for extractors AND
+                # converters (previously they used different defaults,
+                # silently producing zero pairs).
+                conv = dict(conv)
+                conv["conversation_id"] = str(i)
+            cid = conv["conversation_id"]
+
+            turns = conv.get("conversation", [])
+            n_convos += 1
+            n_turns += len(turns)
+
+            conv_signals: List[Signal] = []
             for extractor in self.extractors:
-                raw_signals.extend(extractor(conv))
+                try:
+                    conv_signals.extend(extractor(conv))
+                except SigXError:
+                    raise
+                except Exception as err:
+                    raise ExtractionError(
+                        f"Extractor '{extractor.name}' failed on conversation '{cid}': {err}"
+                    ) from err
+
+            if conv_signals:
+                raw_signals.extend(conv_signals)
+                if collect_turns:
+                    conv_map[cid] = turns
+
+        logger.info("Ran pipeline on %d conversations (%d total turns)", n_convos, n_turns)
 
         filtered, filter_report = self.quality_gate.filter_with_report(raw_signals)
         logger.info(
@@ -87,33 +129,72 @@ class Pipeline:
             filter_report["retention"],
         )
 
-        if return_report:
-            report = filter_report.copy()
-            report["conversations"] = n_convos
-            report["total_turns"] = n_turns
-            report["raw_signals"] = len(raw_signals)
-            report["filtered_signals"] = len(filtered)
-            return filtered, report
+        report = dict(filter_report)
+        report["conversations"] = n_convos
+        report["total_turns"] = n_turns
+        report["raw_signals"] = len(raw_signals)
+        report["filtered_signals"] = len(filtered)
 
+        return filtered, report, conv_map
+
+    @overload
+    def run(
+        self,
+        conversations: Iterable[Dict],
+        return_report: Literal[False] = ...,
+    ) -> List[Signal]: ...
+
+    @overload
+    def run(
+        self,
+        conversations: Iterable[Dict],
+        return_report: Literal[True],
+    ) -> Tuple[List[Signal], Dict]: ...
+
+    def run(
+        self,
+        conversations: Iterable[Dict],
+        return_report: bool = False,
+    ) -> List[Signal] | Tuple[List[Signal], Dict]:
+        """
+        Run all extractors over conversations, then filter through quality gate.
+
+        Args:
+            conversations: Iterable of conversation dicts (a generator is
+                fine; it is consumed in a single pass).
+            return_report: If True, also return a dict with stats.
+
+        Returns:
+            Filtered signals, or (signals, report_dict) if return_report=True.
+        """
+        filtered, report, _ = self._run_impl(conversations)
+        if return_report:
+            return filtered, report
         return filtered
+
+    @overload
+    def to_dpo(
+        self,
+        conversations: Iterable[Dict],
+        return_report: Literal[False] = ...,
+    ) -> List[PreferencePair]: ...
+
+    @overload
+    def to_dpo(
+        self,
+        conversations: Iterable[Dict],
+        return_report: Literal[True],
+    ) -> Tuple[List[PreferencePair], Dict]: ...
 
     def to_dpo(
         self,
         conversations: Iterable[Dict],
         return_report: bool = False,
-    ) -> List[PreferencePair] | tuple[List[PreferencePair], Dict]:
+    ) -> List[PreferencePair] | Tuple[List[PreferencePair], Dict]:
         """
         End-to-end: extract signals, filter, convert to DPO pairs.
         """
-        convos = list(conversations)
-        result = self.run(convos, return_report=True)
-        assert isinstance(result, tuple)
-        signals, report = result
-
-        conv_map = {
-            c.get("conversation_id", str(i)): c.get("conversation", [])
-            for i, c in enumerate(convos)
-        }
+        signals, report, conv_map = self._run_impl(conversations, collect_turns=True)
 
         pairs = to_dpo(signals, conv_map, chosen_strategy=self.chosen_strategy)
 
@@ -121,23 +202,29 @@ class Pipeline:
             return pairs, report
         return pairs
 
+    @overload
+    def to_kto(
+        self,
+        conversations: Iterable[Dict],
+        return_report: Literal[False] = ...,
+    ) -> List[KTOExample]: ...
+
+    @overload
+    def to_kto(
+        self,
+        conversations: Iterable[Dict],
+        return_report: Literal[True],
+    ) -> Tuple[List[KTOExample], Dict]: ...
+
     def to_kto(
         self,
         conversations: Iterable[Dict],
         return_report: bool = False,
-    ) -> List[KTOExample] | tuple[List[KTOExample], Dict]:
+    ) -> List[KTOExample] | Tuple[List[KTOExample], Dict]:
         """
         End-to-end: extract signals, filter, convert to KTO examples.
         """
-        convos = list(conversations)
-        result = self.run(convos, return_report=True)
-        assert isinstance(result, tuple)
-        signals, report = result
-
-        conv_map = {
-            c.get("conversation_id", str(i)): c.get("conversation", [])
-            for i, c in enumerate(convos)
-        }
+        signals, report, conv_map = self._run_impl(conversations, collect_turns=True)
 
         examples = to_kto(signals, conv_map)
 
@@ -147,25 +234,17 @@ class Pipeline:
 
     def report(self, conversations: Iterable[Dict]) -> str:
         """Run the pipeline and return a text report."""
-        convos = list(conversations)
-        n_convos = len(convos)
-        n_turns = sum(len(c.get("conversation", [])) for c in convos)
-
-        raw_signals = []
-        for conv in convos:
-            for extractor in self.extractors:
-                raw_signals.extend(extractor(conv))
-
-        _, filter_report = self.quality_gate.filter_with_report(raw_signals)
-        filtered = self.quality_gate(raw_signals)
-        report_obj = generate_report(filtered, n_convos, n_turns)
+        filtered, run_report, _ = self._run_impl(conversations)
+        report_obj = generate_report(
+            filtered, run_report["conversations"], run_report["total_turns"]
+        )
 
         lines = [
             report_obj.summary(),
             "",
-            f"  Raw signals:    {filter_report['before']}",
-            f"  After filter:   {filter_report['after']}",
-            f"  Dropped:        {filter_report['dropped']} ({filter_report['retention']})",
+            f"  Raw signals:    {run_report['before']}",
+            f"  After filter:   {run_report['after']}",
+            f"  Dropped:        {run_report['dropped']} ({run_report['retention']})",
         ]
         return "\n".join(lines)
 
@@ -220,21 +299,31 @@ class Pipeline:
             )
 
         # 2. Run pipeline to get predictions
-        raw_pred = self.run(gt_convos)
-        assert isinstance(raw_pred, list)
-        pred_signals: List[Signal] = raw_pred
+        pred_signals = self.run(gt_convos)
 
-        pred_map: Dict[str, Dict[int, str]] = {}
+        # Keep the highest-confidence prediction per (conversation, turn) so
+        # the outcome does not depend on extractor ordering.
+        pred_best: Dict[str, Dict[int, Tuple[str, float]]] = {}
         for sig in pred_signals:
             cid = sig.conversation_id
-            if cid not in pred_map:
-                pred_map[cid] = {}
-            pred_map[cid][sig.turn_index] = sig.signal_type
+            if cid not in pred_best:
+                pred_best[cid] = {}
+            prev = pred_best[cid].get(sig.turn_index)
+            if prev is None or sig.confidence > prev[1]:
+                pred_best[cid][sig.turn_index] = (sig.signal_type, sig.confidence)
 
-        # 3. Match predictions against ground truth
-        all_types = sorted(
-            set(s["signal_type"] for item in items for s in item.get("ground_truth", []))
-        )
+        pred_map: Dict[str, Dict[int, str]] = {
+            cid: {turn: st for turn, (st, _conf) in turns.items()}
+            for cid, turns in pred_best.items()
+        }
+
+        # 3. Match predictions against ground truth.
+        # all_types is the union of ground-truth AND predicted types, so
+        # spurious predictions of unlabeled types still count as false
+        # positives instead of being silently ignored.
+        gt_types = set(s["signal_type"] for item in items for s in item.get("ground_truth", []))
+        pred_types = set(stype for turns in pred_map.values() for stype in turns.values())
+        all_types = sorted(gt_types | pred_types)
 
         tp: Dict[str, int] = {t: 0 for t in all_types}
         fp: Dict[str, int] = {t: 0 for t in all_types}
@@ -252,19 +341,14 @@ class Pipeline:
 
                 if gt_type is not None and pd_type is not None:
                     if gt_type == pd_type:
-                        if gt_type in tp:
-                            tp[gt_type] += 1
+                        tp[gt_type] += 1
                     else:
-                        if pd_type in fp:
-                            fp[pd_type] += 1
-                        if gt_type in fn:
-                            fn[gt_type] += 1
-                elif gt_type is not None:
-                    if gt_type in fn:
-                        fn[gt_type] += 1
-                elif pd_type is not None:
-                    if pd_type in fp:
                         fp[pd_type] += 1
+                        fn[gt_type] += 1
+                elif gt_type is not None:
+                    fn[gt_type] += 1
+                elif pd_type is not None:
+                    fp[pd_type] += 1
 
         # 4. Calculate metrics per type
         def _f1(p: float, r: float) -> float:

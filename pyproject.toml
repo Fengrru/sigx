@@ -90,6 +90,10 @@ warn_unused_ignores = true
 warn_unreachable = true
 strict_equality = true
 
+[[tool.mypy.overrides]]
+module = ["sklearn.*", "datasets.*"]
+ignore_missing_imports = true
+
 [tool.pyright]
 pythonVersion = "3.10"
 typeCheckingMode = "strict"

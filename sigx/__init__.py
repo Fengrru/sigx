@@ -46,6 +46,7 @@ from .filters import QualityGate
 from .io import load_conversations, load_wildchat, stream_wildchat
 from .pipeline import Pipeline
 from .types import (
+    SIGNAL_TYPES,
     KTOExample,
     PreferencePair,
     Signal,
@@ -59,6 +60,7 @@ __version__ = "0.1.0"
 __all__ = [
     "Pipeline",
     "Signal",
+    "SIGNAL_TYPES",
     "PreferencePair",
     "KTOExample",
     "SignalReport",

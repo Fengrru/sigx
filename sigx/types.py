@@ -10,7 +10,14 @@ This module defines the fundamental data structures used throughout SigX:
 
 import json
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, FrozenSet, List, Optional
+
+#: Canonical signal types produced by the built-in extractors.
+#: Custom extractors may emit other types, but sticking to these keeps
+#: converters and evaluation behavior well-defined.
+SIGNAL_TYPES: FrozenSet[str] = frozenset(
+    {"rephrase", "correction", "positive", "negative", "abandon"}
+)
 
 
 @dataclass

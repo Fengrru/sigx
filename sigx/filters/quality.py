@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 from typing import Dict, List, Tuple
 
+from ..exceptions import ConfigurationError, QualityGateError
 from ..types import Signal
 
 logger = logging.getLogger(__name__)
@@ -65,13 +66,16 @@ class QualityGate:
             ConfigurationError: If parameters are invalid.
         """
         if not 0.0 <= min_confidence <= 1.0:
-            raise ValueError(f"min_confidence must be in [0.0, 1.0], got {min_confidence}")
+            raise ConfigurationError(f"min_confidence must be in [0.0, 1.0], got {min_confidence}")
         if max_per_conversation < 0:
-            raise ValueError(f"max_per_conversation must be >= 0, got {max_per_conversation}")
+            raise ConfigurationError(
+                f"max_per_conversation must be >= 0, got {max_per_conversation}"
+            )
 
         self.min_confidence = min_confidence
         self.max_per_conversation = max_per_conversation
         self.deduplicate = deduplicate
+        self._n_dropped = 0
 
     def __call__(self, signals: List[Signal]) -> List[Signal]:
         """
@@ -82,9 +86,16 @@ class QualityGate:
 
         Returns:
             Filtered list of Signal objects.
+
+        Raises:
+            QualityGateError: If the input contains objects without the
+                Signal interface (confidence/conversation_id attributes).
         """
         n_total = len(signals)
-        filtered = [s for s in signals if s.confidence >= self.min_confidence]
+        try:
+            filtered = [s for s in signals if s.confidence >= self.min_confidence]
+        except (AttributeError, TypeError) as err:
+            raise QualityGateError(f"Invalid signal object in input: {err}") from err
         n_after_conf = len(filtered)
         logger.debug(
             "Confidence filter (>=%.2f): %d → %d",
@@ -117,6 +128,7 @@ class QualityGate:
                     conv_counts[cid] += 1
             filtered = limited
 
+        self._n_dropped = n_total - len(filtered)
         return filtered
 
     @property
@@ -125,9 +137,9 @@ class QualityGate:
         Get the number of signals dropped in the last filter operation.
 
         Returns:
-            Number of signals dropped.
+            Number of signals dropped (0 if no filtering has run yet).
         """
-        return getattr(self, "_n_dropped", 0)
+        return self._n_dropped
 
     def filter_with_report(self, signals: List[Signal]) -> Tuple[List[Signal], Dict]:
         """

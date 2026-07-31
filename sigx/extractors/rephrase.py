@@ -15,7 +15,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from ..types import Signal
-from .base import BaseExtractor
+from .base import ASSISTANT_ROLES, USER_ROLES, BaseExtractor, format_history
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,10 @@ _NON_CONTENT_RE = re.compile(
     r"^(thanks|thank you|thx|ok|okay|got it|i see|great|perfect)\b",
     re.IGNORECASE,
 )
+
+# CJK unified ideographs, hiragana/katakana, and hangul. Texts containing
+# these need char n-grams because whitespace tokenization does not apply.
+_CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]")
 
 
 class RephraseDetector(BaseExtractor):
@@ -32,6 +36,10 @@ class RephraseDetector(BaseExtractor):
     Uses TF-IDF cosine similarity to compare consecutive user turns.
     High similarity between two user turns (skipping the assistant turn
     between them) suggests the assistant's response was unhelpful.
+
+    For texts containing CJK characters (Chinese/Japanese/Korean), the
+    detector automatically switches to character n-grams, since
+    whitespace-based tokenization does not work for those languages.
 
     Args:
         similarity_threshold: Cosine similarity above which two turns
@@ -66,7 +74,7 @@ class RephraseDetector(BaseExtractor):
         user_turns = [
             (i, t.get("content", "").strip())
             for i, t in enumerate(turns)
-            if t.get("role") in ("user", "human")
+            if t.get("role") in USER_ROLES
         ]
         if len(user_turns) < 2:
             return []
@@ -76,11 +84,19 @@ class RephraseDetector(BaseExtractor):
             return []
 
         texts = [t for _, t in pairs]
-        # Create a fresh vectorizer per call to avoid state contamination
-        vectorizer = TfidfVectorizer(stop_words="english", max_features=self.max_features)
+        # Create a fresh vectorizer per call to avoid state contamination.
+        # CJK text has no whitespace token boundaries, so fall back to
+        # char n-grams when such characters are present.
+        if any(_CJK_RE.search(t) for t in texts):
+            vectorizer = TfidfVectorizer(
+                analyzer="char_wb", ngram_range=(2, 4), max_features=self.max_features
+            )
+        else:
+            vectorizer = TfidfVectorizer(stop_words="english", max_features=self.max_features)
         try:
             all_texts = vectorizer.fit_transform(texts)
         except ValueError:
+            logger.debug("Vectorizer produced empty vocabulary for conv %s; skipping", conv_id)
             return []
 
         signals: List[Signal] = []
@@ -97,7 +113,12 @@ class RephraseDetector(BaseExtractor):
                 continue
 
             if sim >= self.similarity_threshold:
-                assistant_turn = self._get_assistant_between(turns, prev_turn_idx, curr_turn_idx)
+                assistant_idx = self._get_assistant_between(turns, prev_turn_idx, curr_turn_idx)
+                if assistant_idx is None:
+                    # Two similar user messages with no assistant response in
+                    # between (e.g. double-send) carry no feedback about any
+                    # response — skip to avoid mislabeling.
+                    continue
 
                 signals.append(
                     Signal(
@@ -108,9 +129,9 @@ class RephraseDetector(BaseExtractor):
                         evidence=curr_text[:500],
                         context={
                             "previous_query": prev_text[:500],
-                            "rejected_response": (
-                                assistant_turn.get("content", "")[:500] if assistant_turn else ""
-                            ),
+                            "rejected_response": turns[assistant_idx].get("content", "")[:500],
+                            "rejected_turn_index": assistant_idx,
+                            "conversation_prompt": format_history(turns, assistant_idx),
                             "similarity": round(sim, 4),
                             "method": "tfidf",
                         },
@@ -125,21 +146,27 @@ class RephraseDetector(BaseExtractor):
         for orig_idx, text in user_turns:
             cleaned = text.strip()
             if len(cleaned) < self.min_turn_length:
-                if self.skip_acknowledgments and _NON_CONTENT_RE.match(cleaned):
-                    continue
+                continue
+            if self.skip_acknowledgments and _NON_CONTENT_RE.match(cleaned):
+                continue
             pairs.append((orig_idx, cleaned))
         return pairs
 
     @staticmethod
-    def _get_assistant_between(turns: List[Dict], start: int, end: int) -> Optional[Dict]:
+    def _get_assistant_between(turns: List[Dict], start: int, end: int) -> Optional[int]:
         for i in range(start + 1, end):
-            if turns[i].get("role") in ("assistant", "gpt", "model"):
-                return turns[i]
+            if turns[i].get("role") in ASSISTANT_ROLES:
+                return i
         return None
 
 
 def _scale_confidence(similarity: float, threshold: float) -> float:
-    """Map similarity to [0, 1] confidence, saturating above threshold."""
+    """Map similarity to [0, 1] confidence.
+
+    Similarities at the detection threshold map to 0.6 (the default
+    QualityGate min_confidence), so any detected rephrase survives the
+    default gate; higher similarity scales linearly up to 1.0.
+    """
     if similarity >= threshold:
-        return float(np.clip((similarity - threshold) / (1.0 - threshold) * 0.6 + 0.4, 0.0, 1.0))
+        return float(np.clip((similarity - threshold) / (1.0 - threshold) * 0.4 + 0.6, 0.0, 1.0))
     return float(np.clip(similarity / threshold * 0.3, 0.0, 1.0))

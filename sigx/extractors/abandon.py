@@ -12,7 +12,7 @@ import re
 from typing import Dict, List
 
 from ..types import Signal
-from .base import BaseExtractor
+from .base import ASSISTANT_ROLES, USER_ROLES, BaseExtractor, format_history
 
 logger = logging.getLogger(__name__)
 
@@ -70,13 +70,15 @@ class AbandonDetector(BaseExtractor):
 
         # Signal 1: last turn is user with frustration pattern
         last_turn = turns[-1]
-        if last_turn.get("role") in ("user", "human"):
+        if last_turn.get("role") in USER_ROLES:
             text = last_turn.get("content", "").strip()
             for pattern, weight in FRUSTRATION_PATTERNS:
                 if pattern.search(text):
                     assistant_text = ""
-                    if len(turns) >= 2 and turns[-2].get("role") in ("assistant", "gpt", "model"):
+                    prompt_up_to = len(turns) - 1
+                    if len(turns) >= 2 and turns[-2].get("role") in ASSISTANT_ROLES:
                         assistant_text = turns[-2].get("content", "")
+                        prompt_up_to = len(turns) - 2
                     signals.append(
                         Signal(
                             conversation_id=conv_id,
@@ -87,6 +89,8 @@ class AbandonDetector(BaseExtractor):
                             context={
                                 "matched_pattern": pattern.pattern[:100],
                                 "last_assistant_response": assistant_text[:500],
+                                "rejected_response": assistant_text[:500],
+                                "conversation_prompt": format_history(turns, prompt_up_to),
                                 "position": "last_user_turn",
                             },
                         )
@@ -95,13 +99,13 @@ class AbandonDetector(BaseExtractor):
 
         # Signal 2: conversation ends on assistant turn, no user follow-up.
         # Only trigger if the last user turn was an unanswered question.
-        if last_turn.get("role") in ("assistant", "gpt", "model"):
+        if last_turn.get("role") in ASSISTANT_ROLES:
             text = last_turn.get("content", "").strip()
             if len(text) >= self.min_assistant_length:
                 # Find the last user turn before this assistant response
                 last_user_turn = None
                 for _idx, t in enumerate(reversed(turns[:-1])):
-                    if t.get("role") in ("user", "human"):
+                    if t.get("role") in USER_ROLES:
                         last_user_turn = t
                         break
 
@@ -130,6 +134,8 @@ class AbandonDetector(BaseExtractor):
                             "assistant_length": len(text),
                             "total_turns": len(turns),
                             "last_user_question": user_text.endswith("?"),
+                            "rejected_response": text[:500],
+                            "conversation_prompt": format_history(turns, len(turns) - 1),
                         },
                     )
                 )

@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from ..types import Signal
-from .base import BaseExtractor
+from .base import ASSISTANT_ROLES, USER_ROLES, BaseExtractor, format_history
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +56,10 @@ NEGATIVE_PATTERNS: List[Tuple[re.Pattern, float]] = [
         (r"\b(completely\s+wrong|totally\s+wrong|absolutely\s+wrong)\b", 0.90),
         (r"\b(where\s+did\s+you\s+get\s+that)\b", 0.70),
         (r"\b(that\s+wasn['’]t\s+(my\s+question|what\s+i))\b", 0.90),
-        # Sarcasm / passive-aggressive
-        (r"\b(wow[,.\s]*(thanks|great|amazing|brilliant))\b", 0.65),
+        # Sarcasm / passive-aggressive. "wow + praise" is more specific
+        # than a bare praise word, so it must outweigh POSITIVE_PATTERNS'
+        # generic praise (0.70) under best-match selection.
+        (r"\b(wow[,.\s]*(thanks|great|amazing|brilliant))\b", 0.75),
         (r"\b(are\s+you\s+(serious|kidding|joking))\b", 0.65),
     ]
 ]
@@ -115,12 +117,23 @@ POSITIVE_PATTERNS: List[Tuple[re.Pattern, float]] = [
     ]
 ]
 
-FALSE_POSITIVE_GUARDS: List[re.Pattern] = [
+# Guards that suppress only POSITIVE matches: negated praise like
+# "no thanks" / "not great" must not be read as satisfaction, but the
+# same turn may still carry a valid negative/correction signal.
+POSITIVE_GUARDS: List[re.Pattern] = [
     re.compile(p, re.IGNORECASE)
     for p in [
         r"\b(no\s+thanks|no\s+thank\s+you)\b",
         r"\b(not\s+great|not\s+perfect|not\s+exactly|not\s+really)\b",
         r"\b(not\s+helpful|not\s+useful|not\s+good)\b",
+    ]
+]
+
+# Guards that suppress ALL categories: verification questions and
+# hedged uncertainty are neutral, not feedback about the response.
+NEUTRAL_GUARDS: List[re.Pattern] = [
+    re.compile(p, re.IGNORECASE)
+    for p in [
         r"\b(right\?|is\s+that\s+(right|correct)\?|am\s+i\s+(right|correct)\?)",
         r"\b(was\s+that\s+(right|correct|ok|okay)\?)",
         r"\b(i\s+don['’]t\s+think\s+so)\b",
@@ -128,6 +141,9 @@ FALSE_POSITIVE_GUARDS: List[re.Pattern] = [
         r"\b(can\s+you\s+(confirm|verify|double.check))\b",
     ]
 ]
+
+# Backward-compatible alias (deprecated): the combined guard list.
+FALSE_POSITIVE_GUARDS: List[re.Pattern] = POSITIVE_GUARDS + NEUTRAL_GUARDS
 
 # ---------------------------------------------------------------------------
 # ML classifier (optional, lazy-loaded sklearn)
@@ -280,7 +296,7 @@ class SentimentDetector(BaseExtractor):
 
         for i, turn in enumerate(turns):
             role = turn.get("role", "")
-            if role not in ("user", "human"):
+            if role not in USER_ROLES:
                 continue
 
             text = turn.get("content", "").strip()
@@ -288,26 +304,32 @@ class SentimentDetector(BaseExtractor):
                 continue
 
             if self.require_adjacent_assistant:
-                if i == 0 or turns[i - 1].get("role") not in ("assistant", "gpt", "model"):
+                if i == 0 or turns[i - 1].get("role") not in ASSISTANT_ROLES:
                     continue
 
             assistant_text = ""
-            if i > 0 and turns[i - 1].get("role") in ("assistant", "gpt", "model"):
+            assistant_idx: Optional[int] = None
+            if i > 0 and turns[i - 1].get("role") in ASSISTANT_ROLES:
                 assistant_text = turns[i - 1].get("content", "")
+                assistant_idx = i - 1
 
-            # Check for false-positive guards (skips the entire turn)
-            if any(g.search(text) for g in FALSE_POSITIVE_GUARDS):
+            # Neutral guards (verification questions etc.) skip the turn;
+            # positive-only guards are applied inside _extract_regex so
+            # negative/correction signals in the same turn still fire.
+            if any(g.search(text) for g in NEUTRAL_GUARDS):
                 continue
 
+            prompt = format_history(turns, assistant_idx if assistant_idx is not None else i)
+
             # --- Stage 1: regex patterns ---
-            signal = self._extract_regex(text, conv_id, i, assistant_text)
+            signal = self._extract_regex(text, conv_id, i, assistant_text, prompt)
             if signal is not None:
                 signals.append(signal)
                 continue
 
             # --- Stage 2: ML fallback ---
             if self.use_ml and self._ml_pipeline is not None:
-                ml_signal = self._extract_ml(text, conv_id, i, assistant_text)
+                ml_signal = self._extract_ml(text, conv_id, i, assistant_text, prompt)
                 if ml_signal is not None:
                     signals.append(ml_signal)
 
@@ -328,55 +350,51 @@ class SentimentDetector(BaseExtractor):
         conv_id: str,
         turn_index: int,
         assistant_text: str,
+        prompt: str,
     ) -> Optional[Signal]:
-        """Try regex patterns; return a Signal or None."""
-        # Check in priority order: correction > negative > positive
-        for pattern, weight in CORRECTION_PATTERNS:
-            if pattern.search(text) and weight >= self.min_confidence:
-                return Signal(
-                    conversation_id=conv_id,
-                    turn_index=turn_index,
-                    signal_type="correction",
-                    confidence=weight,
-                    evidence=text[:500],
-                    context={
-                        "method": "regex",
-                        "matched_pattern": pattern.pattern[:100],
-                        "assistant_response": assistant_text[:500],
-                    },
-                )
+        """Try regex patterns; return a Signal for the strongest match or None.
 
-        for pattern, weight in NEGATIVE_PATTERNS:
-            if pattern.search(text) and weight >= self.min_confidence:
-                return Signal(
-                    conversation_id=conv_id,
-                    turn_index=turn_index,
-                    signal_type="negative",
-                    confidence=weight,
-                    evidence=text[:500],
-                    context={
-                        "method": "regex",
-                        "matched_pattern": pattern.pattern[:100],
-                        "assistant_response": assistant_text[:500],
-                    },
-                )
+        All three categories are scanned and the highest-weight match wins,
+        so a strong negative cue cannot be shadowed by a weaker correction
+        cue that merely appears earlier in the pattern list. Ties break by
+        priority: correction > negative > positive.
+        """
+        positive_guarded = any(g.search(text) for g in POSITIVE_GUARDS)
 
-        for pattern, weight in POSITIVE_PATTERNS:
-            if pattern.search(text) and weight >= self.min_confidence:
-                return Signal(
-                    conversation_id=conv_id,
-                    turn_index=turn_index,
-                    signal_type="positive",
-                    confidence=weight,
-                    evidence=text[:500],
-                    context={
-                        "method": "regex",
-                        "matched_pattern": pattern.pattern[:100],
-                        "assistant_response": assistant_text[:500],
-                    },
-                )
+        best: Optional[Tuple[float, int, str, re.Pattern]] = None
+        categories: List[Tuple[str, int, List[Tuple[re.Pattern, float]]]] = [
+            ("correction", 0, CORRECTION_PATTERNS),
+            ("negative", 1, NEGATIVE_PATTERNS),
+            ("positive", 2, POSITIVE_PATTERNS),
+        ]
+        for signal_type, priority, patterns in categories:
+            if signal_type == "positive" and positive_guarded:
+                continue
+            for pattern, weight in patterns:
+                if weight < self.min_confidence:
+                    continue
+                if not pattern.search(text):
+                    continue
+                if best is None or (weight, -priority) > (best[0], -best[1]):
+                    best = (weight, priority, signal_type, pattern)
 
-        return None
+        if best is None:
+            return None
+
+        weight, _, signal_type, pattern = best
+        return Signal(
+            conversation_id=conv_id,
+            turn_index=turn_index,
+            signal_type=signal_type,
+            confidence=weight,
+            evidence=text[:500],
+            context={
+                "method": "regex",
+                "matched_pattern": pattern.pattern[:100],
+                "assistant_response": assistant_text[:500],
+                "conversation_prompt": prompt,
+            },
+        )
 
     def _extract_ml(
         self,
@@ -384,6 +402,7 @@ class SentimentDetector(BaseExtractor):
         conv_id: str,
         turn_index: int,
         assistant_text: str,
+        prompt: str,
     ) -> Optional[Signal]:
         """Try ML classifier; return a Signal or None."""
         if self._ml_pipeline is None:
@@ -412,5 +431,6 @@ class SentimentDetector(BaseExtractor):
                 "method": "ml",
                 "ml_confidence": round(confidence, 4),
                 "assistant_response": assistant_text[:500],
+                "conversation_prompt": prompt,
             },
         )

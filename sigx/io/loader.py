@@ -69,7 +69,9 @@ def load_wildchat(
     try:
         from datasets import load_dataset
     except ImportError as err:
-        raise ImportError("datasets library required. Install with: pip install datasets") from err
+        raise DataLoadingError(
+            "datasets library required. Install with: pip install datasets"
+        ) from err
 
     ds = load_dataset("allenai/WildChat-1M", split=split, streaming=(n is None))
     if n is not None:
