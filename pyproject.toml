@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sigx"
-version = "0.1.0"
+version = "0.1.1"
 description = "Implicit Feedback Signal Extraction for LLM Alignment"
 readme = "README.md"
 license = {text = "MIT"}
@@ -97,6 +97,8 @@ ignore_missing_imports = true
 [tool.pyright]
 pythonVersion = "3.10"
 typeCheckingMode = "strict"
+# scripts/ are untyped matplotlib one-offs; strict-check the library only
+exclude = ["scripts", "**/__pycache__"]
 reportMissingImports = true
 reportMissingTypeStubs = false
 reportGeneralTypeIssues = true

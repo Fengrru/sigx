@@ -1,7 +1,5 @@
 <div align="center">
 
-![SigX banner](docs/assets/banner.png)
-
 [![CI](https://github.com/Fengrru/sigx/actions/workflows/ci.yml/badge.svg)](https://github.com/Fengrru/sigx/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Fengrru/sigx/branch/main/graph/badge.svg)](https://codecov.io/gh/Fengrru/sigx)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue?style=flat&logo=python&logoColor=white)
@@ -34,23 +32,23 @@ Traditional LLM alignment relies on **expensive human annotations** or **synthet
 
 **SigX mines these signals at zero marginal cost** — turning your existing chat logs into DPO/KTO training data.
 
-> Inspired by [WildFeedback](https://arxiv.org/abs/2408.15549) (Microsoft Research, ACL 2026), [WildReward](https://arxiv.org/abs/2602.08829) (Tsinghua KEG, 2026), [IFLLM](https://arxiv.org/abs/2606.20482) (UMass, 2026), and the broader literature on learning from implicit preferences.
+> Inspired by [WildFeedback](https://arxiv.org/abs/2408.15549) (Microsoft Research, 2024) and the broader literature on learning from implicit preferences.
 
 ---
 
 ## Comparison with Related Tools
 
-| Feature | **SigX** | preference-data-pipeline | TRL (HuggingFace) | SFTizer |
-|:---|:---:|:---:|:---:|:---:|
-| **Extract signals from raw logs** | **Yes** | No (needs pre-labeled data) | No | No |
-| **Implicit feedback detection** | **Yes** | No | No | No |
-| **DPO/KTO output format** | **Yes** | Yes | Yes (training only) | No |
-| **Auto-infer chosen responses** | **Yes** | No | No | No |
-| **Pluggable extractors** | **Yes** | No | No | No |
-| **LLM-based classification** | **Yes** | No | No | No |
-| **Built-in evaluation metrics** | **Yes** | No | No | No |
-| **Zero GPU required** | **Yes** | Yes | No | Yes |
-| **Wildcard/ShareGPT/OpenAI loaders** | **Yes** | Partial | Yes | Yes |
+| Feature | **SigX** | TRL (HuggingFace) | VeRL |
+|:---|:---:|:---:|:---:|
+| **Extract signals from raw logs** | **Yes** | No (expects labeled pairs) | No |
+| **Implicit feedback detection** | **Yes** | No | No |
+| **DPO/KTO output format** | **Yes** | Yes (training only) | Yes (training only) |
+| **Auto-infer chosen responses** | **Yes** | No | No |
+| **Pluggable extractors** | **Yes** | No | No |
+| **Built-in evaluation metrics** | **Yes** | No | No |
+| **Zero GPU required** | **Yes** | No | No |
+
+> SigX is not a training framework — it sits **upstream** of TRL/VeRL, producing the preference data they consume.
 
 ---
 
@@ -74,7 +72,7 @@ Traditional LLM alignment relies on **expensive human annotations** or **synthet
 
 - **Lightweight** — Only `numpy` + `scikit-learn`. No GPU needed.
 - **Extensible** — Subclass `BaseExtractor` for custom detectors
-- **Production-ready** — Type annotations, 70 tests, CI/CD
+- **Production-ready** — Type annotations, 92 tests, CI/CD
 - **Framework-agnostic** — Output compatible with TRL, VeRL, and more
 
 </td>
@@ -173,7 +171,7 @@ SigX detects five categories of implicit feedback:
 
 | Signal | Trigger Pattern | Confidence Range | Training Implication |
 |:---|:---|:---:|:---|
-| `rephrase` | User re-asks similar question (TF-IDF cosine sim) | 0.40 – 1.00 | Previous response → `rejected` |
+| `rephrase` | User re-asks similar question (TF-IDF cosine sim) | 0.60 – 1.00 | Previous response → `rejected` |
 | `correction` | "Actually I meant...", "No, that's not..." | 0.60 – 0.95 | Model output → `rejected` |
 | `negative` | "That's wrong", "Not helpful" | 0.65 – 0.95 | Explicit dissatisfaction → `rejected` |
 | `positive` | "Thanks!", "Exactly what I needed" | 0.60 – 0.90 | Explicit satisfaction → `chosen` / `label=True` |
@@ -186,13 +184,15 @@ SigX detects five categories of implicit feedback:
 ### RephraseDetector
 
 Detects when users rephrase or repeat a question using TF-IDF cosine similarity.
+For CJK text (Chinese/Japanese/Korean) it automatically switches to character
+n-grams, since whitespace tokenization does not apply to those languages.
 
 ```python
 from sigx import RephraseDetector
 
 detector = RephraseDetector(
     similarity_threshold=0.6,   # Cosine similarity threshold
-    min_turn_length=20,         # Ignore very short turns
+    min_turn_length=20,         # Skip user turns shorter than this (chars)
     skip_acknowledgments=True,  # Skip "thanks", "ok", etc.
 )
 ```
@@ -455,8 +455,6 @@ SigX is built on growing evidence that **implicit feedback from real user intera
 | Paper | Institution | Year | Key Finding |
 |:---|:---|:---:|:---|
 | [WildFeedback](https://arxiv.org/abs/2408.15549) | Microsoft Research | 2024 | 20K preference pairs from 148K ChatGPT conversations outperformed UltraFeedback on AlpacaEval 2, Arena-Hard, MT-Bench |
-| [WildReward](https://arxiv.org/abs/2602.08829) | Tsinghua KEG | 2026 | 186k WildFB dataset; RMs trained on in-the-wild interactions achieve SOTA on RewardBench, RM-Bench, and superior calibration |
-| [IFLLM](https://arxiv.org/abs/2606.20482) | UMass | 2026 | Implicit feedback (mouse/eye tracking) boosted reward model pairwise accuracy from 55% to 64% |
 
 **The key insight**: Real user feedback captures nuance that synthetic data misses, and the signals are already present in existing chat logs — they just need to be extracted.
 
@@ -465,7 +463,6 @@ SigX is built on growing evidence that **implicit feedback from real user intera
 | Project | Focus | SigX Connection |
 |:---|:---|:---|
 | [WildFeedback](https://arxiv.org/abs/2408.15549) | Extracting preference pairs from in-situ feedback | SigX implements the extraction pipeline in Python |
-| [WildReward](https://arxiv.org/abs/2602.08829) | Training reward models from wild interactions | SigX output can feed reward model training |
 | [TRL](https://github.com/huggingface/trl) | Post-training (DPO/KTO/PPO) | SigX output is TRL-compatible |
 | [VeRL](https://github.com/volcengine/verl) | RLHF framework | SigX output works with VeRL |
 
@@ -479,7 +476,7 @@ cd sigx
 pip install -e ".[dev]"
 
 # Run tests
-pytest                    # 70 tests
+pytest                    # 92 tests
 pytest --cov=sigx         # With coverage
 
 # Lint
