@@ -84,7 +84,7 @@ Traditional LLM alignment relies on **expensive human annotations** or **synthet
 ## Quick Start
 
 ```bash
-pip install git+https://github.com/Fengrru/sigx.git
+pip install sigx
 ```
 
 ### 1. Extract Signals from Conversations
@@ -154,14 +154,14 @@ trainer.train()
 
 ## Installation
 
-> PyPI release coming soon. For now, install from source:
+> Published on [PyPI](https://pypi.org/project/sigx) as `sigx`.
 
 | Install Command | Includes |
 |:---|:---|
-| `pip install git+https://github.com/Fengrru/sigx.git` | Core (numpy, scikit-learn) |
-| `pip install "sigx[llm] @ git+https://github.com/Fengrru/sigx.git"` | + OpenAI API for LLMExtractor |
-| `pip install "sigx[wildchat] @ git+https://github.com/Fengrru/sigx.git"` | + HuggingFace datasets for WildChat |
-| `git clone https://github.com/Fengrru/sigx.git && pip install -e ".[dev]"` | + pytest, ruff, mypy, pyright |
+| `pip install sigx` | Core (numpy, scikit-learn) |
+| `pip install "sigx[llm]"` | + OpenAI API for LLMExtractor |
+| `pip install "sigx[wildchat]"` | + HuggingFace datasets for WildChat |
+| `git clone https://github.com/Fengrru/sigx.git && pip install -e ".[dev]"` | + pytest, ruff, mypy, pyright (from source) |
 
 ---
 
