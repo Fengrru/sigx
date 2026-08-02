@@ -1,8 +1,8 @@
 name: Release
 
+# Manual-only release: publishing to PyPI is a deliberate act.
+# Run this workflow from the Actions tab when a release is ready.
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
 
 jobs:
@@ -36,7 +36,6 @@ jobs:
     name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       id-token: write  # Trusted publishing (OIDC); remove if using a token
     environment:
