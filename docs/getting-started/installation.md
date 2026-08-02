@@ -32,5 +32,5 @@ pip install -e ".[dev]"
 
 ```python
 import sigx
-print(sigx.__version__)  # 0.1.0
+print(sigx.__version__)  # 0.1.1
 ```
